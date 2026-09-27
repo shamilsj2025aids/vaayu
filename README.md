@@ -1,5 +1,5 @@
-# VAAYU — SIH26082
-### 72-Hour Delhi-NCR Air Quality Forecasting System: Hybrid Physics + Coupled Graph Neural Network
+# VAAYU
+### Air Quality Forecasting System: Hybrid Physics + Coupled Graph Neural Network
 
 VAAYU is a spatiotemporal air quality forecasting platform designed for the Commission for Air Quality Management (CAQM) and Delhi-NCR municipal authorities. It couples global numerical physics baselines (Copernicus CAMS) with a dynamic Graph Neural Network (GNN) that learns the residual error — specifically solving the **Day-2 and Day-3 accuracy collapse** documented in conventional numerical weather & chemical transport models (WRF-Chem).
 

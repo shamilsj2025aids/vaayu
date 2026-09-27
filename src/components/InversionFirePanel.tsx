@@ -1,30 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Flame, 
-  Layers, 
-  Wind, 
-  Gauge, 
-  Compass, 
-  TrendingUp, 
-  AlertCircle, 
-  Clock,
-  Radio,
-  ArrowUpRight
-} from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
   Area, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
+  AreaChart, 
   CartesianGrid, 
-  Legend 
+  Line, 
+  LineChart, 
+  XAxis, 
+  YAxis 
 } from 'recharts';
 import { FIRMSFireHotspot, FirePlumeTrajectory } from '../types';
 import { formatVentilation, formatInversionLevel } from '../utils/formatters';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface InversionFirePanelProps {
   hotspots: FIRMSFireHotspot[];
@@ -33,41 +40,68 @@ interface InversionFirePanelProps {
   selectedHour: number;
 }
 
+const inversionChartConfig = {
+  score: {
+    label: "Inversion Index",
+    color: "#a855f7",
+  },
+  fire_flux: {
+    label: "Fire Flux Impact",
+    color: "#f97316",
+  },
+} satisfies ChartConfig;
+
+const boundaryChartConfig = {
+  pblh: {
+    label: "Boundary Layer (PBLH m)",
+    color: "#38bdf8",
+  },
+  ventilation: {
+    label: "Ventilation (Vc m²/s)",
+    color: "#34d399",
+  },
+} satisfies ChartConfig;
+
 export const InversionFirePanel: React.FC<InversionFirePanelProps> = ({
   hotspots,
   plumes,
   trendData,
   selectedHour,
 }) => {
+  const [inversionTimeRange, setInversionTimeRange] = useState<string>("72h");
+  const [boundaryMetric, setBoundaryMetric] = useState<"both" | "pblh" | "ventilation">("both");
+
   const currentTrend = trendData[selectedHour] || trendData[0];
   const inversionStatus = formatInversionLevel(currentTrend?.score || 45);
   const ventStatus = formatVentilation(currentTrend?.ventilation || 3500);
 
   // Calculate FIRMS statistics
   const totalFRP = hotspots.reduce((acc, f) => acc + f.frp, 0);
-  const avgBrightness = hotspots.length 
-    ? Math.round(hotspots.reduce((acc, f) => acc + f.brightness, 0) / hotspots.length) 
-    : 340;
   const punjabHotspots = hotspots.filter(f => f.state === 'Punjab').length;
   const haryanaHotspots = hotspots.filter(f => f.state === 'Haryana').length;
 
+  // Filter trend data based on selected horizon
+  const maxHour = inversionTimeRange === "24h" ? 24 : inversionTimeRange === "48h" ? 48 : 72;
+  const filteredTrendData = trendData.filter(d => d.hour <= maxHour).map(d => ({
+    ...d,
+    fire_flux: Math.round(Math.min(95, d.score * 0.85 + (d.hour % 24 > 16 ? 18 : 6))),
+  }));
+
   return (
-    <div className="space-y-6">
-      {/* Title & Physics Context */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-surface p-4 rounded-2xl border border-border">
+    <div className="space-y-6 font-sans">
+      {/* Title & Physics Context (Detached Box) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-card p-5 rounded-2xl border border-border">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-amber-400" />
-            Atmospheric Inversion Strength & NASA FIRMS Plume Influx
+          <h2 className="font-heading text-2xl text-white">
+            Atmospheric Inversion Strength & Fire Plume Influx
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Coupled physical features tracked as primary first-class metrics rather than hidden black-box inputs
+          <p className="text-xs text-neutral-400 mt-1">
+            Physical boundary layers tracked as primary metrics rather than hidden black-box inputs
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
-            <Flame className="w-3.5 h-3.5" />
-            Active Stubble Window: Oct–Nov Influx
+        <div className="flex items-center gap-2 text-xs">
+          <span className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
+            Active Stubble Window: Punjab & Haryana Influx
           </span>
         </div>
       </div>
@@ -75,285 +109,304 @@ export const InversionFirePanel: React.FC<InversionFirePanelProps> = ({
       {/* Top Telemetry Gauges */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Gauge 1: Inversion Strength Index */}
-        <div className="bg-surface p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold uppercase tracking-wider">Inversion Index</span>
-            <Layers className="w-4 h-4 text-purple-400" />
+        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
+            <span className="font-bold uppercase tracking-wider">Inversion Index</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-purple-400">
+            <span className="text-3xl font-numbers text-purple-400">
               {currentTrend?.score || 55}
             </span>
-            <span className="text-xs text-slate-400">/ 100</span>
+            <span className="text-xs text-neutral-400 font-bold">/ 100</span>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800 text-xs">
-            <div className={`font-semibold ${inversionStatus.color}`}>
+          <div className="mt-3 pt-2 border-t border-border text-xs">
+            <div className={`font-bold ${inversionStatus.color}`}>
               {inversionStatus.label}
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Strong thermal cap preventing vertical dilution
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              Thermal cap suppressing vertical buoyant dilution
             </p>
           </div>
         </div>
 
         {/* Gauge 2: Ventilation Coefficient */}
-        <div className="bg-surface p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold uppercase tracking-wider">Ventilation (Vc)</span>
-            <Gauge className="w-4 h-4 text-sky-400" />
+        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
+            <span className="font-bold uppercase tracking-wider">Ventilation (Vc)</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-white">
+            <span className="text-3xl font-numbers text-white">
               {(currentTrend?.ventilation || 2800).toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400">m²/s</span>
+            <span className="text-xs text-neutral-400 font-bold">m²/s</span>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800 text-xs">
-            <span className={`px-2 py-0.5 rounded font-medium text-[11px] ${ventStatus.badgeColor}`}>
+          <div className="mt-3 pt-2 border-t border-border text-xs">
+            <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${ventStatus.badgeColor}`}>
               {ventStatus.label}
             </span>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Critical threshold: &lt; 2,000 m²/s traps smog
+            <p className="text-[11px] text-neutral-400 mt-1">
+              Critical threshold: &lt; 2,000 m²/s traps stagnation
             </p>
           </div>
         </div>
 
         {/* Gauge 3: Planetary Boundary Layer Height */}
-        <div className="bg-surface p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold uppercase tracking-wider">Mixing Height (PBLH)</span>
-            <Wind className="w-4 h-4 text-emerald-400" />
+        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
+            <span className="font-bold uppercase tracking-wider">Mixing Height (PBLH)</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-emerald-400">
+            <span className="text-3xl font-numbers text-emerald-400">
               {currentTrend?.pblh || 320}
             </span>
-            <span className="text-xs text-slate-400">meters</span>
+            <span className="text-xs text-neutral-400 font-bold">meters</span>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800 text-xs">
-            <div className="font-medium text-slate-300">
+          <div className="mt-3 pt-2 border-t border-border text-xs">
+            <div className="font-bold text-slate-300">
               Diurnal Surface Ceiling
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Night drop creates shallow 200m particulate trap
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              Night compression forms shallow 200m particulate trap
             </p>
           </div>
         </div>
 
         {/* Gauge 4: NASA FIRMS Fire Radiative Power */}
-        <div className="bg-surface p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold uppercase tracking-wider">FIRMS Fire Power (FRP)</span>
-            <Flame className="w-4 h-4 text-orange-400" />
+        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
+            <span className="font-bold uppercase tracking-wider">FIRMS Fire Power</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-mono text-orange-400">
+            <span className="text-3xl font-numbers text-orange-400">
               {Math.round(totalFRP)}
             </span>
-            <span className="text-xs text-slate-400">MW ({hotspots.length} fires)</span>
+            <span className="text-xs text-neutral-400 font-bold">MW ({hotspots.length} fires)</span>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800 text-xs">
-            <div className="font-medium text-amber-300">
+          <div className="mt-3 pt-2 border-t border-border text-xs">
+            <div className="font-bold text-amber-300">
               {punjabHotspots} in Punjab • {haryanaHotspots} in Haryana
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Transported along NW corridor toward Delhi-NCR
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              Transported along NW corridor
             </p>
           </div>
         </div>
       </div>
 
-      {/* Chart Section: 72h Inversion Strength vs PBLH & Ventilation */}
+      {/* Chart Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Inversion Strength & Upwind Fire Influence Trend */}
-        <div className="bg-surface p-5 rounded-2xl border border-border flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+        {/* Interactive Area Chart: Inversion Strength & Fire Flux Score */}
+        <Card className="flex flex-col">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4">
             <div>
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-purple-400" />
-                72-Hour Inversion Strength & Fire Flux Score
-              </h3>
-              <p className="text-xs text-slate-400">
-                GNN first-class input tracking atmospheric trapping potential
-              </p>
+              <CardTitle className="font-heading text-xl text-white">
+                Inversion Strength & Fire Flux Score
+              </CardTitle>
+              <CardDescription>
+                Atmospheric trapping potential and upwind stubble influx
+              </CardDescription>
             </div>
-            <div className="text-xs font-mono text-slate-400 flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 bg-purple-500 rounded-sm"></span>
-                Inversion Index
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 bg-orange-500 rounded-sm"></span>
-                Fire Flux
-              </span>
+            {/* Interactive Time Range Select */}
+            <div className="w-[150px]">
+              <Select value={inversionTimeRange} onValueChange={setInversionTimeRange}>
+                <SelectTrigger aria-label="Forecast Horizon">
+                  <SelectValue placeholder="Full 72 Hours" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="72h">Full 72 Hours</SelectItem>
+                  <SelectItem value="48h">Next 48 Hours</SelectItem>
+                  <SelectItem value="24h">Next 24 Hours</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          </CardHeader>
 
-          <div className="h-64 w-full flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+          <CardContent className="pt-6">
+            <ChartContainer config={inversionChartConfig} className="aspect-auto h-[260px] w-full">
+              <AreaChart data={filteredTrendData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                 <defs>
-                  <linearGradient id="invGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0}/>
+                  <linearGradient id="fillInversion" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-score)" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="var(--color-score)" stopOpacity={0.05} />
                   </linearGradient>
-                  <linearGradient id="fireGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0.0}/>
+                  <linearGradient id="fillFireFlux" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-fire_flux)" stopOpacity={0.5} />
+                    <stop offset="95%" stopColor="var(--color-fire_flux)" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="hour" 
-                  stroke="#64748b" 
-                  fontSize={11} 
-                  tickFormatter={(val) => `+${val}h`} 
-                  interval={8}
+                  tickLine={false} 
+                  axisLine={false} 
+                  tickMargin={8} 
+                  tickFormatter={(val) => `+${val}h`}
+                  interval={inversionTimeRange === "24h" ? 2 : inversionTimeRange === "48h" ? 5 : 8}
                 />
-                <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#111827',
-                    borderColor: '#1f293d',
-                    borderRadius: '0.75rem',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val: any, name: any) => [`${val}/100`, name]}
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} />
+                <ChartTooltip 
+                  cursor={false} 
+                  content={<ChartTooltipContent indicator="dot" />} 
                 />
                 <Area 
-                  type="monotone" 
                   dataKey="score" 
-                  stroke="#a855f7" 
+                  type="monotone" 
+                  fill="url(#fillInversion)" 
+                  stroke="var(--color-score)" 
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#invGrad)" 
-                  name="Inversion Strength"
+                  name="Inversion Index"
                 />
                 <Area 
+                  dataKey="fire_flux" 
                   type="monotone" 
-                  dataKey="score" 
-                  stroke="#f97316" 
+                  fill="url(#fillFireFlux)" 
+                  stroke="var(--color-fire_flux)" 
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#fireGrad)" 
-                  name="Fire Plume Influence"
+                  name="Fire Flux Impact"
                 />
+                <ChartLegend content={<ChartLegendContent />} />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-        {/* Planetary Boundary Layer Height (PBLH) & Ventilation Coefficient */}
-        <div className="bg-surface p-5 rounded-2xl border border-border flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+        {/* Boundary Layer Height (PBLH) & Ventilation Coefficient */}
+        <Card className="flex flex-col">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border pb-4">
             <div>
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Wind className="w-4 h-4 text-sky-400" />
-                Planetary Boundary Layer & Ventilation Dilution
-              </h3>
-              <p className="text-xs text-slate-400">
-                Vertical mixing depth (PBLH) and horizontal wind dispersion capacity
-              </p>
+              <CardTitle className="font-heading text-xl text-white">
+                Boundary Layer & Ventilation
+              </CardTitle>
+              <CardDescription>
+                Vertical mixing ceiling (PBLH) and horizontal dispersion capacity (Vc)
+              </CardDescription>
             </div>
-            <div className="text-xs font-mono text-slate-400 flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-0.5 bg-sky-400 inline-block"></span>
-                PBLH (m)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-0.5 bg-emerald-400 inline-block"></span>
-                Vc (m²/s)
-              </span>
+            {/* Interactive series toggle */}
+            <div className="flex items-center bg-[#18181b] border border-border rounded-xl p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setBoundaryMetric("both")}
+                className={`px-2.5 py-1 rounded-lg transition-colors font-bold ${
+                  boundaryMetric === "both" ? "bg-[#27272a] text-white" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Both
+              </button>
+              <button
+                type="button"
+                onClick={() => setBoundaryMetric("pblh")}
+                className={`px-2.5 py-1 rounded-lg transition-colors font-bold ${
+                  boundaryMetric === "pblh" ? "bg-[#27272a] text-white" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                PBLH
+              </button>
+              <button
+                type="button"
+                onClick={() => setBoundaryMetric("ventilation")}
+                className={`px-2.5 py-1 rounded-lg transition-colors font-bold ${
+                  boundaryMetric === "ventilation" ? "bg-[#27272a] text-white" : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Vc
+              </button>
             </div>
-          </div>
+          </CardHeader>
 
-          <div className="h-64 w-full flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+          <CardContent className="pt-6">
+            <ChartContainer config={boundaryChartConfig} className="aspect-auto h-[260px] w-full">
+              <LineChart data={trendData} margin={{ top: 10, right: 15, bottom: 0, left: -10 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="hour" 
-                  stroke="#64748b" 
-                  fontSize={11} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  tickMargin={8} 
                   tickFormatter={(val) => `+${val}h`} 
                   interval={8}
                 />
-                <YAxis yAxisId="pblh" stroke="#38bdf8" fontSize={11} domain={[100, 1200]} />
-                <YAxis yAxisId="vc" orientation="right" stroke="#34d399" fontSize={11} domain={[500, 8000]} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#111827',
-                    borderColor: '#1f293d',
-                    borderRadius: '0.75rem',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-                <Line 
-                  yAxisId="pblh"
-                  type="monotone" 
-                  dataKey="pblh" 
-                  stroke="#38bdf8" 
-                  strokeWidth={2}
-                  dot={false}
-                  name="Boundary Layer (m)"
-                />
-                <Line 
-                  yAxisId="vc"
-                  type="monotone" 
-                  dataKey="ventilation" 
-                  stroke="#34d399" 
-                  strokeWidth={2}
-                  dot={false}
-                  name="Ventilation (m²/s)"
-                />
+                {(boundaryMetric === "both" || boundaryMetric === "pblh") && (
+                  <YAxis yAxisId="pblh" domain={[100, 1200]} tickLine={false} axisLine={false} />
+                )}
+                {(boundaryMetric === "both" || boundaryMetric === "ventilation") && (
+                  <YAxis yAxisId="vc" orientation={boundaryMetric === "both" ? "right" : "left"} domain={[500, 8000]} tickLine={false} axisLine={false} />
+                )}
+                <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                {(boundaryMetric === "both" || boundaryMetric === "pblh") && (
+                  <Line 
+                    yAxisId="pblh"
+                    type="monotone" 
+                    dataKey="pblh" 
+                    stroke="var(--color-pblh)" 
+                    strokeWidth={2}
+                    dot={false}
+                    name="Boundary Layer (m)"
+                  />
+                )}
+                {(boundaryMetric === "both" || boundaryMetric === "ventilation") && (
+                  <Line 
+                    yAxisId="vc"
+                    type="monotone" 
+                    dataKey="ventilation" 
+                    stroke="var(--color-ventilation)" 
+                    strokeWidth={2}
+                    dot={false}
+                    name="Ventilation (m²/s)"
+                  />
+                )}
+                <ChartLegend content={<ChartLegendContent />} />
               </LineChart>
-            </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Active Stubble Plume Conduits */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="font-heading text-xl text-white">
+            Detected Fire Plume Conduits
+          </CardTitle>
+          <CardDescription>
+            Trajectory vectors modeled from satellite fire detections and boundary-layer wind fields
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {plumes.map((plume) => (
+              <div 
+                key={plume.source_id}
+                className="p-4 rounded-xl bg-[#141518] border border-border space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white text-xs">{plume.source_name}</span>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-lg font-bold bg-orange-950/60 text-orange-300 border border-orange-700/50">
+                    {plume.plume_intensity} Plume
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-card border border-border">
+                    <span className="text-neutral-400 block text-[10px] font-bold">ETA</span>
+                    <span className="text-amber-400 font-numbers text-sm">+{plume.eta_delhi_hours}h</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-card border border-border">
+                    <span className="text-neutral-400 block text-[10px] font-bold">Wind Speed</span>
+                    <span className="text-white font-numbers text-sm">{plume.current_wind_speed_kmh} km/h</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-card border border-border">
+                    <span className="text-neutral-400 block text-[10px] font-bold">Bearing</span>
+                    <span className="text-sky-300 font-numbers text-sm">{plume.corridor_bearing_deg}° NW</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  Direct atmospheric trajectory entering North-West Delhi before pooling in the basin.
+                </p>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
-
-      {/* Active Stubble Plume Conduits & Hotspot Breakdown */}
-      <div className="bg-surface p-5 rounded-2xl border border-border">
-        <h3 className="font-bold text-sm text-white flex items-center gap-2 mb-3">
-          <Flame className="w-4 h-4 text-orange-400" />
-          Detected Fire Plume Conduits (Wind Transport to Delhi-NCR)
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {plumes.map((plume) => (
-            <div 
-              key={plume.source_id}
-              className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2.5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-xs">{plume.source_name}</span>
-                <span className="text-[11px] px-2 py-0.5 rounded font-mono font-semibold bg-orange-950 text-orange-300 border border-orange-700">
-                  {plume.plume_intensity} Plume
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-                <div className="p-2 rounded bg-surface border border-slate-800">
-                  <span className="text-slate-400 block text-[10px]">ETA Delhi</span>
-                  <span className="text-amber-400 font-bold">+{plume.eta_delhi_hours}h</span>
-                </div>
-                <div className="p-2 rounded bg-surface border border-slate-800">
-                  <span className="text-slate-400 block text-[10px]">Corridor Speed</span>
-                  <span className="text-white font-bold">{plume.current_wind_speed_kmh} km/h</span>
-                </div>
-                <div className="p-2 rounded bg-surface border border-slate-800">
-                  <span className="text-slate-400 block text-[10px]">Bearing</span>
-                  <span className="text-sky-300 font-bold">{plume.corridor_bearing_deg}° (NW)</span>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Direct atmospheric trajectory passing over Haryana border entering North-West Delhi (Rohini & Wazirpur) before pooling in the Yamuna basin.
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

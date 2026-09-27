@@ -1,15 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  ShieldAlert, 
-  HelpCircle,
-  Sparkles
-} from 'lucide-react';
 import { formatHourLeadTime } from '../utils/formatters';
 
 interface TimeSliderProps {
@@ -25,7 +14,6 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Auto-play timelapse
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (isPlaying) {
@@ -50,41 +38,40 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
     onHourChange(h);
   };
 
-  // Uncertainty band indicator
   const uncertaintyWidth = Math.round(12 + (currentHour / maxHours) * 38);
 
   return (
-    <div className="bg-surface/95 backdrop-blur border border-border rounded-xl p-3.5 shadow-xl flex flex-col gap-3">
-      {/* Top row: Current Forecast Lead Time Label & Confidence Status */}
+    <div className="bg-[#121316] border border-[#27272a] rounded-2xl p-3.5 shadow-lg flex flex-col gap-3">
+      {/* Top row */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-sky-400" />
-            <span className="text-xs uppercase tracking-wider font-semibold text-slate-400">
+            <span className="material-symbols-outlined text-base text-sky-400">schedule</span>
+            <span className="text-xs uppercase tracking-wider font-semibold text-neutral-400">
               Forecast Horizon:
             </span>
-            <span className="text-sm font-bold font-mono text-white bg-sky-500/20 px-2.5 py-0.5 rounded-md border border-sky-500/30">
+            <span className="text-xs font-bold font-mono text-white bg-[#18181b] px-2.5 py-1 rounded-md border border-[#27272a]">
               {formatHourLeadTime(currentHour)}
             </span>
           </div>
 
           {currentHour > 0 && (
-            <span className="text-xs text-slate-400 hidden sm:inline">
+            <span className="text-xs text-neutral-400 hidden sm:inline font-mono">
               (+{Math.floor(currentHour / 24)}d {currentHour % 24}h lead)
             </span>
           )}
         </div>
 
-        {/* Confidence Range Badge (Emphasizing confidence over false precision) */}
+        {/* Confidence Range Badge */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-[11px] font-mono">
-            <span className="text-slate-400">Uncertainty Margin:</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#18181b] border border-[#27272a] text-[11px] font-mono">
+            <span className="text-neutral-400">Uncertainty Margin:</span>
             <span className={`font-semibold ${currentHour > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
               ±{uncertaintyWidth} µg/m³
             </span>
           </div>
 
-          <div className="hidden lg:flex items-center text-[11px] text-slate-400 italic">
+          <div className="hidden lg:flex items-center text-[11px] text-neutral-500 italic">
             <span>(Interval expands at +48h/72h to prevent false precision)</span>
           </div>
         </div>
@@ -94,25 +81,29 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
       <div className="flex items-center gap-3">
         {/* Play/Pause Button */}
         <button
+          type="button"
           onClick={() => setIsPlaying(!isPlaying)}
-          className={`p-2 rounded-lg transition-all ${
+          className={`p-2 rounded-xl transition-all flex items-center justify-center ${
             isPlaying 
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30' 
-              : 'bg-sky-600 text-white hover:bg-sky-500 shadow-md shadow-sky-600/30'
+              ? 'bg-amber-950/80 text-amber-300 border border-amber-800' 
+              : 'bg-sky-600 text-white hover:bg-sky-500 shadow-sm'
           }`}
           title={isPlaying ? 'Pause 72h timelapse' : 'Play 72h continuous timelapse'}
         >
-          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 translate-x-0.5" />}
+          <span className="material-symbols-outlined text-base">
+            {isPlaying ? 'pause' : 'play_arrow'}
+          </span>
         </button>
 
         {/* Step Backward */}
         <button
+          type="button"
           onClick={handleStepBack}
           disabled={currentHour === 0}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#18181b] disabled:opacity-30 disabled:hover:bg-transparent"
           title="Step back 1 hour"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <span className="material-symbols-outlined text-base">chevron_left</span>
         </button>
 
         {/* Range Slider Track */}
@@ -124,33 +115,35 @@ export const TimeSlider: React.FC<TimeSliderProps> = ({
             step={1}
             value={currentHour}
             onChange={(e) => onHourChange(Number(e.target.value))}
-            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+            className="w-full h-1.5 bg-[#27272a] rounded-lg appearance-none cursor-pointer accent-sky-500 focus:outline-none"
           />
         </div>
 
         {/* Step Forward */}
         <button
+          type="button"
           onClick={handleStepForward}
           disabled={currentHour === maxHours}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#18181b] disabled:opacity-30 disabled:hover:bg-transparent"
           title="Step forward 1 hour"
         >
-          <ChevronRight className="w-4 h-4" />
+          <span className="material-symbols-outlined text-base">chevron_right</span>
         </button>
       </div>
 
-      {/* Preset Jump Milestones (Now, +12h, +24h, +36h, +48h, +60h, +72h) */}
-      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/60 font-mono">
+      {/* Preset Jump Milestones */}
+      <div className="flex items-center justify-between text-xs pt-1 border-t border-[#27272a] font-mono">
         {[0, 12, 24, 36, 48, 60, 72].map((hour) => {
           const isSelected = currentHour === hour;
           return (
             <button
               key={hour}
+              type="button"
               onClick={() => jumpToHour(hour)}
               className={`px-2 py-0.5 rounded transition-all ${
                 isSelected
-                  ? 'bg-sky-500 text-white font-bold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-sky-600 text-white font-bold'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#18181b]'
               }`}
             >
               {hour === 0 ? 'Now' : `+${hour}h`}

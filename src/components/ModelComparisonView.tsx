@@ -1,58 +1,113 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  GitCompare, 
-  TrendingUp, 
-  HelpCircle, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Award, 
-  ArrowRight,
-  Zap,
-  Info
-} from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  ComposedChart, 
+  CartesianGrid, 
   Line, 
   Bar, 
+  BarChart,
+  LineChart,
   XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid, 
-  Legend 
+  YAxis 
 } from 'recharts';
 import { StationForecast } from '../types';
 import { DELHI_NCR_STATIONS } from '../data/stations';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ModelComparisonViewProps {
   forecasts: Map<string, StationForecast>;
 }
 
+const multiModelConfig = {
+  gnn_pm25: {
+    label: "VAAYU GNN Residual",
+    color: "#38bdf8",
+  },
+  cams_pm25: {
+    label: "CAMS Physics Baseline",
+    color: "#a855f7",
+  },
+  wrf_chem_pm25: {
+    label: "Govt WRF-Chem Benchmark",
+    color: "#f43f5e",
+  },
+} satisfies ChartConfig;
+
+const residualConfig = {
+  residual_correction: {
+    label: "Learned Residual Correction (Δ PM2.5)",
+    color: "#8b5cf6",
+  },
+} satisfies ChartConfig;
+
 export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ forecasts }) => {
   const [selectedStationId, setSelectedStationId] = useState<string>('dl-anand-vihar');
+  const [activeModelTab, setActiveModelTab] = useState<"all" | "gnn_pm25" | "cams_pm25" | "wrf_chem_pm25">("all");
+  const [residualHorizon, setResidualHorizon] = useState<"all" | "d1" | "d2" | "d3">("all");
 
   const selectedForecast = forecasts.get(selectedStationId) || Array.from(forecasts.values())[0];
   const hours = selectedForecast?.hours || [];
 
   // Generate comparison data across 72 hours
-  const comparisonData = hours.map((h) => {
-    const cams = h.cams_baseline_pm25;
-    const gnn = h.pm25.mean;
-    const residual = h.gnn_residual_pm25;
-    // WRF-Chem government baseline (known for sharp underprediction on days 2-3)
-    const wrf = Math.max(35, Math.round(cams * (1.0 - (h.hour_offset / 72) * 0.25) - 10));
+  const comparisonData = useMemo(() => {
+    return hours.map((h) => {
+      const cams = h.cams_baseline_pm25;
+      const gnn = h.pm25.mean;
+      const residual = h.gnn_residual_pm25;
+      const wrf = Math.max(35, Math.round(cams * (1.0 - (h.hour_offset / 72) * 0.25) - 10));
 
-    return {
-      hour: `+${h.hour_offset}h`,
-      rawHour: h.hour_offset,
-      gnn_pm25: gnn,
-      cams_pm25: cams,
-      wrf_chem_pm25: wrf,
-      residual_correction: residual,
-    };
-  });
+      return {
+        hour: `+${h.hour_offset}h`,
+        rawHour: h.hour_offset,
+        gnn_pm25: gnn,
+        cams_pm25: cams,
+        wrf_chem_pm25: wrf,
+        residual_correction: residual,
+      };
+    });
+  }, [hours]);
 
-  // Calculate day-by-day metrics
+  // Model summary totals for interactive buttons
+  const modelStats = useMemo(() => {
+    if (!comparisonData.length) return { gnn: 0, cams: 0, wrf: 0 };
+    const gnnAvg = Math.round(comparisonData.reduce((acc, d) => acc + d.gnn_pm25, 0) / comparisonData.length);
+    const camsAvg = Math.round(comparisonData.reduce((acc, d) => acc + d.cams_pm25, 0) / comparisonData.length);
+    const wrfAvg = Math.round(comparisonData.reduce((acc, d) => acc + d.wrf_chem_pm25, 0) / comparisonData.length);
+    return { gnn: gnnAvg, cams: camsAvg, wrf: wrfAvg };
+  }, [comparisonData]);
+
+  // Filtered residual data
+  const filteredResidualData = useMemo(() => {
+    if (residualHorizon === "d1") return comparisonData.filter(d => d.rawHour <= 24);
+    if (residualHorizon === "d2") return comparisonData.filter(d => d.rawHour > 24 && d.rawHour <= 48);
+    if (residualHorizon === "d3") return comparisonData.filter(d => d.rawHour > 48);
+    return comparisonData;
+  }, [comparisonData, residualHorizon]);
+
+  const avgSelectedResidual = useMemo(() => {
+    if (!filteredResidualData.length) return 0;
+    return Math.round(filteredResidualData.reduce((acc, d) => acc + d.residual_correction, 0) / filteredResidualData.length);
+  }, [filteredResidualData]);
+
   const day1GNN = Math.round(hours.slice(0, 24).reduce((acc, h) => acc + h.pm25.mean, 0) / 24);
   const day1CAMS = Math.round(hours.slice(0, 24).reduce((acc, h) => acc + h.cams_baseline_pm25, 0) / 24);
 
@@ -63,83 +118,81 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
   const day3CAMS = Math.round(hours.slice(48, 72).reduce((acc, h) => acc + h.cams_baseline_pm25, 0) / 24);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Title & Core Scientific Value Banner */}
-      <div className="bg-surface p-5 rounded-2xl border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-card p-5 rounded-2xl border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <GitCompare className="w-5 h-5" />
-            </span>
-            <h2 className="text-lg font-bold text-white">
-              Physics Baseline vs. Coupled GNN Residual Correction
-            </h2>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Empirical evidence of the GNN resolving the Day-2 and Day-3 accuracy collapse documented in government WRF-Chem systems
+          <h2 className="font-heading text-2xl text-white">
+            Physics Baseline vs. GNN Residual Correction
+          </h2>
+          <p className="text-xs text-neutral-400 mt-1">
+            Empirical evidence of the GNN resolving the Day-2 and Day-3 accuracy collapse documented in conventional systems
           </p>
         </div>
 
-        {/* Station Picker */}
+        {/* Station Picker with Select */}
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <label className="text-xs text-slate-400 font-medium whitespace-nowrap">
-            Compare Station:
+          <label className="text-xs text-neutral-400 font-bold whitespace-nowrap">
+            Station:
           </label>
-          <select
-            value={selectedStationId}
-            onChange={(e) => setSelectedStationId(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 font-medium"
-          >
-            {DELHI_NCR_STATIONS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.zone})
-              </option>
-            ))}
-          </select>
+          <div className="min-w-[220px]">
+            <Select value={selectedStationId} onValueChange={setSelectedStationId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Station" />
+              </SelectTrigger>
+              <SelectContent>
+                {DELHI_NCR_STATIONS.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name} ({s.zone})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* The Day-1 vs Day-2 vs Day-3 Residual Delta Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Day 1 (+24h) */}
-        <div className="p-4 rounded-2xl bg-surface border border-border space-y-2">
+        <div className="p-4 rounded-2xl bg-card border border-border space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-200">Day 1 (+0h to +24h Lead)</span>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px]">
+            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-[10px]">
               Minor Residual Δ
             </span>
           </div>
-          <div className="flex items-baseline justify-between pt-1 font-mono">
+          <div className="flex items-baseline justify-between pt-1">
             <div>
-              <span className="text-2xl font-bold text-sky-400">{day1GNN}</span>
-              <span className="text-[11px] text-slate-400 block">GNN Mean (µg/m³)</span>
+              <span className="text-2xl font-numbers text-sky-400">{day1GNN}</span>
+              <span className="text-[11px] text-neutral-400 block font-bold">GNN Mean (µg/m³)</span>
             </div>
             <div className="text-right">
-              <span className="text-xl font-semibold text-slate-400">{day1CAMS}</span>
-              <span className="text-[11px] text-slate-400 block">CAMS Physics</span>
+              <span className="text-xl font-numbers text-neutral-400">{day1CAMS}</span>
+              <span className="text-[11px] text-neutral-400 block font-bold">CAMS Physics</span>
             </div>
           </div>
-          <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-800">
+          <div className="text-[11px] text-neutral-400 pt-2 border-t border-border">
             CAMS captures macro synoptic conditions reasonably well in the first 24 hours.
           </div>
         </div>
 
         {/* Day 2 (+48h) */}
-        <div className="p-4 rounded-2xl bg-surface border border-purple-900/40 bg-purple-950/10 space-y-2">
+        <div className="p-4 rounded-2xl bg-card border border-purple-900/40 bg-purple-950/10 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-purple-200">Day 2 (+24h to +48h Lead)</span>
-            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono text-[10px]">
-              WRF-Chem Divergence
+            <span className="px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[10px]">
+              Physics Divergence
             </span>
           </div>
-          <div className="flex items-baseline justify-between pt-1 font-mono">
+          <div className="flex items-baseline justify-between pt-1">
             <div>
-              <span className="text-2xl font-bold text-sky-400">{day2GNN}</span>
-              <span className="text-[11px] text-slate-400 block">GNN Mean (µg/m³)</span>
+              <span className="text-2xl font-numbers text-sky-400">{day2GNN}</span>
+              <span className="text-[11px] text-neutral-400 block font-bold">GNN Mean (µg/m³)</span>
             </div>
             <div className="text-right">
-              <span className="text-xl font-semibold text-rose-400 line-through">{day2CAMS}</span>
-              <span className="text-[11px] text-rose-300 block">CAMS Underpredicts</span>
+              <span className="text-xl font-numbers text-rose-400 line-through">{day2CAMS}</span>
+              <span className="text-[11px] text-rose-300 block font-bold">CAMS Underpredicts</span>
             </div>
           </div>
           <div className="text-[11px] text-purple-300 pt-2 border-t border-purple-900/30">
@@ -148,21 +201,21 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
         </div>
 
         {/* Day 3 (+72h) */}
-        <div className="p-4 rounded-2xl bg-surface border border-rose-900/40 bg-rose-950/10 space-y-2">
+        <div className="p-4 rounded-2xl bg-card border border-rose-900/40 bg-rose-950/10 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-rose-200">Day 3 (+48h to +72h Lead)</span>
-            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono text-[10px]">
+            <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-[10px]">
               Accuracy Collapse Target
             </span>
           </div>
-          <div className="flex items-baseline justify-between pt-1 font-mono">
+          <div className="flex items-baseline justify-between pt-1">
             <div>
-              <span className="text-2xl font-bold text-sky-400">{day3GNN}</span>
-              <span className="text-[11px] text-slate-400 block">GNN Mean (µg/m³)</span>
+              <span className="text-2xl font-numbers text-sky-400">{day3GNN}</span>
+              <span className="text-[11px] text-neutral-400 block font-bold">GNN Mean (µg/m³)</span>
             </div>
             <div className="text-right">
-              <span className="text-xl font-semibold text-rose-400 line-through">{day3CAMS}</span>
-              <span className="text-[11px] text-rose-300 block">CAMS Fails (Severe Bias)</span>
+              <span className="text-xl font-numbers text-rose-400 line-through">{day3CAMS}</span>
+              <span className="text-[11px] text-rose-300 block font-bold">CAMS Fails</span>
             </div>
           </div>
           <div className="text-[11px] text-rose-300 pt-2 border-t border-rose-900/30">
@@ -171,140 +224,216 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
         </div>
       </div>
 
-      {/* Primary Comparative Visual: GNN vs CAMS vs WRF-Chem Overlaid */}
-      <div className="bg-surface p-5 rounded-2xl border border-border space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="font-bold text-sm text-white flex items-center gap-2">
-              <Zap className="w-4 h-4 text-sky-400" />
-              72-Hour Multi-Model Trajectory Comparison
-            </h3>
-            <p className="text-xs text-slate-400">
-              Station: <strong className="text-slate-200">{selectedForecast.station.name}</strong> • Notice CAMS/WRF-Chem falling off after +36h
-            </p>
+      {/* ChartLineInteractive: Multi-Model Trajectory Comparison */}
+      <Card>
+        <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-0 sm:flex-row">
+          <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5">
+            <CardTitle className="font-heading text-xl text-white">
+              Multi-Model Trajectory Comparison
+            </CardTitle>
+            <CardDescription>
+              Station: <strong className="text-slate-200">{selectedForecast.station.name}</strong> • Interactive trajectory breakdown
+            </CardDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-sky-400 inline-block"></span>
-              <span className="text-slate-200">GNN Coupled Residual</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-purple-400 inline-block border-dashed"></span>
-              <span className="text-slate-300">CAMS Physics Baseline</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-rose-400 inline-block border-dotted"></span>
-              <span className="text-slate-400">Govt WRF-Chem Benchmark</span>
-            </span>
-          </div>
-        </div>
+          {/* Interactive buttons in CardHeader */}
+          <div className="flex border-t sm:border-t-0 sm:border-l border-border divide-x divide-border">
+            <button
+              type="button"
+              data-active={activeModelTab === "all"}
+              onClick={() => setActiveModelTab("all")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[100px]"
+            >
+              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Mode</span>
+              <span className="text-xs font-bold text-white">All Models</span>
+            </button>
 
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={comparisonData} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+            <button
+              type="button"
+              data-active={activeModelTab === "gnn_pm25"}
+              onClick={() => setActiveModelTab("gnn_pm25")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+            >
+              <span className="text-[10px] text-sky-400 font-bold">VAAYU GNN</span>
+              <span className="text-sm font-numbers text-sky-300">{modelStats.gnn} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
+            </button>
+
+            <button
+              type="button"
+              data-active={activeModelTab === "cams_pm25"}
+              onClick={() => setActiveModelTab("cams_pm25")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+            >
+              <span className="text-[10px] text-purple-400 font-bold">CAMS Physics</span>
+              <span className="text-sm font-numbers text-purple-300">{modelStats.cams} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
+            </button>
+
+            <button
+              type="button"
+              data-active={activeModelTab === "wrf_chem_pm25"}
+              onClick={() => setActiveModelTab("wrf_chem_pm25")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+            >
+              <span className="text-[10px] text-rose-400 font-bold">WRF-Chem</span>
+              <span className="text-sm font-numbers text-rose-300">{modelStats.wrf} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
+            </button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-6">
+          <ChartContainer config={multiModelConfig} className="aspect-auto h-[280px] w-full">
+            <LineChart data={comparisonData} margin={{ top: 10, right: 15, bottom: 0, left: -10 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis 
                 dataKey="hour" 
-                stroke="#64748b" 
-                fontSize={11} 
+                tickLine={false} 
+                axisLine={false} 
+                tickMargin={8} 
                 interval={5}
               />
               <YAxis 
-                stroke="#64748b" 
-                fontSize={11} 
                 domain={[0, 'auto']} 
-                label={{ value: 'PM2.5 (µg/m³)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }}
+                tickLine={false} 
+                axisLine={false}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111827',
-                  borderColor: '#1f293d',
-                  borderRadius: '0.75rem',
-                  color: '#fff',
-                  fontSize: '12px',
-                }}
-              />
-              {/* WRF-Chem Benchmark */}
-              <Line 
-                type="monotone" 
-                dataKey="wrf_chem_pm25" 
-                stroke="#f43f5e" 
-                strokeWidth={1.5}
-                strokeDasharray="3 3" 
-                dot={false}
-                name="WRF-Chem (Govt Model)"
-              />
-              {/* CAMS Physics Baseline */}
-              <Line 
-                type="monotone" 
-                dataKey="cams_pm25" 
-                stroke="#a855f7" 
-                strokeWidth={2}
-                strokeDasharray="4 4" 
-                dot={false}
-                name="CAMS Raw Physics"
-              />
-              {/* GNN Corrected Output */}
-              <Line 
-                type="monotone" 
-                dataKey="gnn_pm25" 
-                stroke="#38bdf8" 
-                strokeWidth={3} 
-                dot={false}
-                name="VAAYU GNN Corrected"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+              <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
 
-      {/* The Learned Residual Breakdown Bar Chart */}
-      <div className="bg-surface p-5 rounded-2xl border border-border space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-sm text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-purple-400" />
-              What the GNN Specifically Learned: Hourly Residual Correction (Δ PM2.5)
-            </h3>
-            <p className="text-xs text-slate-400">
-              The Chemistry head outputs the residual error relative to CAMS for that hour: Final = CAMS + Learned Residual
-            </p>
+              {(activeModelTab === "all" || activeModelTab === "wrf_chem_pm25") && (
+                <Line 
+                  type="monotone" 
+                  dataKey="wrf_chem_pm25" 
+                  stroke="var(--color-wrf_chem_pm25)" 
+                  strokeWidth={activeModelTab === "wrf_chem_pm25" ? 3 : 1.5}
+                  strokeDasharray="4 4" 
+                  dot={false}
+                  name="Govt WRF-Chem Benchmark"
+                />
+              )}
+
+              {(activeModelTab === "all" || activeModelTab === "cams_pm25") && (
+                <Line 
+                  type="monotone" 
+                  dataKey="cams_pm25" 
+                  stroke="var(--color-cams_pm25)" 
+                  strokeWidth={activeModelTab === "cams_pm25" ? 3 : 2}
+                  strokeDasharray="3 3" 
+                  dot={false}
+                  name="CAMS Physics Baseline"
+                />
+              )}
+
+              {(activeModelTab === "all" || activeModelTab === "gnn_pm25") && (
+                <Line 
+                  type="monotone" 
+                  dataKey="gnn_pm25" 
+                  stroke="var(--color-gnn_pm25)" 
+                  strokeWidth={3} 
+                  dot={false}
+                  name="VAAYU GNN Residual"
+                />
+              )}
+              <ChartLegend content={<ChartLegendContent />} />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* ChartBarInteractive: The Learned Residual Breakdown */}
+      <Card>
+        <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-0 sm:flex-row">
+          <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5">
+            <CardTitle className="font-heading text-xl text-white">
+              GNN Learned Residual Error Breakdown (Δ PM2.5)
+            </CardTitle>
+            <CardDescription>
+              Chemistry head learned error offset: <span className="font-bold text-purple-300">Final = CAMS + Learned Residual</span>
+            </CardDescription>
           </div>
-          <span className="text-xs font-mono text-purple-300 bg-purple-950/60 px-2.5 py-1 rounded-lg border border-purple-800/40">
-            Component E Architecture
-          </span>
-        </div>
 
-        <div className="h-56 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={comparisonData} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
-              <XAxis dataKey="hour" stroke="#64748b" fontSize={11} interval={5} />
-              <YAxis stroke="#64748b" fontSize={11} label={{ value: 'Residual Δ (µg/m³)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111827',
-                  borderColor: '#1f293d',
-                  borderRadius: '0.75rem',
-                  color: '#fff',
-                  fontSize: '12px',
-                }}
+          {/* Interactive Horizon Filter Tabs */}
+          <div className="flex border-t sm:border-t-0 sm:border-l border-border divide-x divide-border">
+            <button
+              type="button"
+              data-active={residualHorizon === "all"}
+              onClick={() => setResidualHorizon("all")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+            >
+              <span className="text-[10px] text-neutral-400 uppercase font-bold">Horizon</span>
+              <span className="text-xs font-bold text-white">Full 72h</span>
+            </button>
+            <button
+              type="button"
+              data-active={residualHorizon === "d1"}
+              onClick={() => setResidualHorizon("d1")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+            >
+              <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 1</span>
+              <span className="text-xs font-bold text-white font-numbers">0–24h</span>
+            </button>
+            <button
+              type="button"
+              data-active={residualHorizon === "d2"}
+              onClick={() => setResidualHorizon("d2")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+            >
+              <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 2</span>
+              <span className="text-xs font-bold text-purple-300 font-numbers">24–48h</span>
+            </button>
+            <button
+              type="button"
+              data-active={residualHorizon === "d3"}
+              onClick={() => setResidualHorizon("d3")}
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+            >
+              <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 3</span>
+              <span className="text-xs font-bold text-rose-300 font-numbers">48–72h</span>
+            </button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-3 px-1 text-xs">
+            <span className="text-neutral-400">
+              Average Correction in Window: <strong className="text-purple-400 font-numbers">+{avgSelectedResidual} µg/m³</strong>
+            </span>
+          </div>
+
+          <ChartContainer config={residualConfig} className="aspect-auto h-[240px] w-full">
+            <BarChart data={filteredResidualData} margin={{ top: 10, right: 15, bottom: 0, left: -10 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="hour" 
+                tickLine={false} 
+                axisLine={false} 
+                tickMargin={8} 
+                interval={residualHorizon === "all" ? 5 : 2}
+              />
+              <YAxis 
+                tickLine={false} 
+                axisLine={false}
+              />
+              <ChartTooltip 
+                content={
+                  <ChartTooltipContent 
+                    className="w-[180px]" 
+                    labelFormatter={(val) => `Lead Time: ${val}`}
+                  />
+                } 
               />
               <Bar 
                 dataKey="residual_correction" 
-                fill="#8b5cf6" 
+                fill="var(--color-residual_correction)" 
                 radius={[4, 4, 0, 0]} 
                 name="Learned Residual Error"
               />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+            </BarChart>
+          </ChartContainer>
 
-        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-          <strong className="text-white font-semibold">Judge Takeaway:</strong> Rather than predicting raw AQI values from scratch and overfitting, the model preserves CAMS's large-scale global atmospheric physics while using the spatial graph (wind-weighted station connectivity) and NASA FIRMS fire boundary nodes to learn the exact physical error offset. This makes day-3 predictions practically actionable for the Commission for Air Quality Management (CAQM).
-        </div>
-      </div>
+          <div className="mt-4 p-3.5 rounded-xl bg-[#141518] border border-border text-xs text-neutral-300 leading-relaxed">
+            <strong className="text-white font-bold">Scientific Context:</strong> Rather than predicting raw AQI values from scratch, the model preserves global atmospheric physics while learning the physical error offset from satellite fire boundaries and station network connectivity.
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

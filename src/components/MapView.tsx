@@ -9,7 +9,6 @@ import {
 } from '../types';
 import { getAQIColor, getAQICategory, getAQIBadgeClass } from '../utils/aqi';
 import { formatConfidenceRange, formatHourLeadTime, degreesToCompass } from '../utils/formatters';
-import { Layers, Flame, Wind, Eye, EyeOff, Navigation, Sparkles } from 'lucide-react';
 
 interface MapViewProps {
   forecasts: Map<string, StationForecast>;
@@ -290,75 +289,86 @@ export const MapView: React.FC<MapViewProps> = ({
       {/* Floating Map Controls & Overlays */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
         {/* Navigation Shortcut Chips */}
-        <div className="flex items-center gap-1.5 bg-surface/90 backdrop-blur border border-border p-1 rounded-xl shadow-lg text-xs">
+        <div className="flex items-center gap-1.5 bg-[#121316]/95 border border-[#27272a] p-1 rounded-xl shadow-lg text-xs">
           <button
+            type="button"
             onClick={resetDelhiCenter}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 font-medium flex items-center gap-1.5 transition-colors"
+            className="px-2.5 py-1 rounded-lg bg-[#18181b] text-neutral-200 hover:bg-[#27272a] font-medium flex items-center gap-1.5 transition-colors"
           >
-            <Navigation className="w-3.5 h-3.5 text-sky-400" />
+            <span className="material-symbols-outlined text-sm text-sky-400">near_me</span>
             Delhi-NCR Center
           </button>
           <button
+            type="button"
             onClick={viewPunjabFires}
             className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-800/40 text-amber-300 hover:bg-amber-900/60 font-medium flex items-center gap-1.5 transition-colors"
           >
-            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span className="material-symbols-outlined text-sm text-amber-400">local_fire_department</span>
             Upwind Fire Source (NW)
           </button>
         </div>
 
         {/* Dynamic Layer Toggles */}
-        <div className="bg-surface/90 backdrop-blur border border-border p-2 rounded-xl shadow-lg text-xs space-y-1.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1 flex items-center gap-1">
-            <Layers className="w-3 h-3 text-slate-400" />
+        <div className="bg-[#121316]/95 border border-[#27272a] p-2 rounded-xl shadow-lg text-xs space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 px-1 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs text-neutral-400">layers</span>
             Spatiotemporal Layers
           </div>
           <button
+            type="button"
             onClick={() => setShowEdges(!showEdges)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showEdges ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' : 'text-slate-400 hover:bg-slate-800'
+              showEdges ? 'bg-[#18181b] text-sky-300 border border-sky-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
             }`}
           >
             <span className="flex items-center gap-1.5">
-              <Wind className="w-3.5 h-3.5 text-sky-400" />
+              <span className="material-symbols-outlined text-xs text-sky-400">air</span>
               Dynamic GNN Edges
             </span>
-            {showEdges ? <Eye className="w-3.5 h-3.5 text-sky-400" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span className="material-symbols-outlined text-sm">
+              {showEdges ? 'visibility' : 'visibility_off'}
+            </span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowFires(!showFires)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showFires ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-slate-400 hover:bg-slate-800'
+              showFires ? 'bg-[#18181b] text-amber-300 border border-amber-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
             }`}
           >
             <span className="flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-500" />
+              <span className="material-symbols-outlined text-xs text-amber-400">local_fire_department</span>
               NASA FIRMS Hotspots
             </span>
-            {showFires ? <Eye className="w-3.5 h-3.5 text-amber-400" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span className="material-symbols-outlined text-sm">
+              {showFires ? 'visibility' : 'visibility_off'}
+            </span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowPlumes(!showPlumes)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showPlumes ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'text-slate-400 hover:bg-slate-800'
+              showPlumes ? 'bg-[#18181b] text-orange-300 border border-orange-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
             }`}
           >
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-0.5 bg-orange-500 inline-block border-dashed"></span>
               Plume Trajectory
             </span>
-            {showPlumes ? <Eye className="w-3.5 h-3.5 text-orange-400" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span className="material-symbols-outlined text-sm">
+              {showPlumes ? 'visibility' : 'visibility_off'}
+            </span>
           </button>
         </div>
       </div>
 
       {/* Floating Bottom-Right AQI Severity Scale Legend */}
-      <div className="absolute bottom-4 right-4 z-10 bg-surface/95 backdrop-blur border border-border p-3 rounded-xl shadow-xl text-xs max-w-xs pointer-events-auto">
+      <div className="absolute bottom-4 right-4 z-10 bg-[#121316]/95 border border-[#27272a] p-3 rounded-2xl shadow-xl text-xs max-w-xs pointer-events-auto">
         <div className="font-semibold text-white mb-2 flex items-center justify-between">
           <span>CPCB AQI Category Scale</span>
-          <span className="text-[10px] text-slate-400 font-mono">Lead: {formatHourLeadTime(selectedHour)}</span>
+          <span className="text-[10px] text-neutral-400 font-mono">Lead: {formatHourLeadTime(selectedHour)}</span>
         </div>
         <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
           <div className="flex items-center gap-1.5">

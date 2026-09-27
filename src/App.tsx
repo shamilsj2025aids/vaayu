@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ViewMode, 
   AuthorityTab, 
   StationForecast, 
   DynamicGraphEdge, 
@@ -20,7 +19,9 @@ import {
   getSystemStatus, 
   triggerFastRefresh 
 } from './services/api';
-import { Header } from './components/Header';
+import { LoginPage, AuthUser } from './components/LoginPage';
+import { Sidebar } from './components/Sidebar';
+import { HomeWidgetDashboard } from './components/HomeWidgetDashboard';
 import { AlertBanner } from './components/AlertBanner';
 import { AlertDetailModal } from './components/AlertDetailModal';
 import { TimeSlider } from './components/TimeSlider';
@@ -33,9 +34,21 @@ import { SystemStatusPanel } from './components/SystemStatusPanel';
 import { PublicView } from './components/PublicView';
 
 export const App: React.FC = () => {
-  // Navigation & View Mode
-  const [viewMode, setViewMode] = useState<ViewMode>('authority');
-  const [activeTab, setActiveTab] = useState<AuthorityTab>('map');
+  // Authentication State
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('vaayu_auth_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Active Authority Tab (defaults to 'home' central widget organizer)
+  const [activeTab, setActiveTab] = useState<AuthorityTab>('home');
 
   // Forecast & Telemetry State
   const [forecasts, setForecasts] = useState<Map<string, StationForecast>>(new Map());
@@ -105,13 +118,22 @@ export const App: React.FC = () => {
 
   // Update dynamic graph edges when selected hour changes
   useEffect(() => {
-    // Determine prevailing wind direction at selected hour
     const sampleForecast = forecasts.values().next().value;
     const windDir = sampleForecast?.hours[selectedHour]?.weather.wind_direction || 315;
     getDynamicEdges(windDir).then(setEdges);
   }, [selectedHour, forecasts]);
 
-  // Handle "Refresh Now" action (live demo interaction)
+  const handleLogin = (newUser: AuthUser) => {
+    setUser(newUser);
+    localStorage.setItem('vaayu_auth_user', JSON.stringify(newUser));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('vaayu_auth_user');
+  };
+
+  // Handle "Refresh Now" action
   const handleTriggerRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -129,90 +151,118 @@ export const App: React.FC = () => {
 
   const selectedForecast = selectedStationId ? forecasts.get(selectedStationId) || null : null;
 
+  // If not logged in, display the Login Portal
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
-    <div className="min-h-screen bg-background text-slate-100 flex flex-col font-sans">
-      {/* Persistent Header */}
-      <Header
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col lg:flex-row font-sans">
+      {/* Sleek Vertical Sidebar (Replacing Top Navbar completely) */}
+      <Sidebar
+        user={user}
+        onLogout={handleLogout}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenSystemStatus={() => setIsSystemStatusOpen(true)}
         onTriggerRefresh={handleTriggerRefresh}
         isRefreshing={isRefreshing}
         lastRefreshTime={lastRefreshTime}
-        activeAlertCount={alerts.length}
+        alerts={alerts}
+        onSelectAlert={(a) => setActiveAlertForWhy(a)}
       />
 
-      {/* Proactive Alert Banner (Visible in Authority Mode) */}
-      {viewMode === 'authority' && (
-        <AlertBanner
-          alerts={alerts}
-          onSelectAlert={(a) => setActiveAlertForWhy(a)}
-        />
-      )}
-
-      {/* Main Content Area */}
-      <main className="flex-1 p-3 sm:p-5 max-w-[1600px] w-full mx-auto flex flex-col">
-        {isLoadingInitial ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-24 space-y-4">
-            <div className="w-10 h-10 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
-            <p className="text-sm font-medium text-slate-400 font-mono">
-              Initializing VAAYU Spatiotemporal Graph & Physics Baseline...
-            </p>
-          </div>
-        ) : viewMode === 'public' ? (
-          /* Simplified Public Citizen Experience */
-          <PublicView forecasts={forecasts} />
-        ) : (
-          /* Authority / Decision-Maker Experience */
-          <div className="flex-1 flex flex-col">
-            {activeTab === 'map' && (
-              <div className="flex-1 flex flex-col gap-4">
-                {/* Time Slider Bar */}
-                <TimeSlider
-                  currentHour={selectedHour}
-                  onHourChange={setSelectedHour}
-                  maxHours={72}
-                />
-
-                {/* Map View */}
-                <div className="flex-1 h-[68vh] min-h-[500px]">
-                  <MapView
-                    forecasts={forecasts}
-                    selectedHour={selectedHour}
-                    selectedStationId={selectedStationId}
-                    onSelectStation={setSelectedStationId}
-                    edges={edges}
-                    fireHotspots={fireHotspots}
-                    firePlumes={firePlumes}
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'inversion-fire' && (
-              <InversionFirePanel
-                hotspots={fireHotspots}
-                plumes={firePlumes}
-                trendData={inversionTrend}
-                selectedHour={selectedHour}
-              />
-            )}
-
-            {activeTab === 'comparison' && (
-              <ModelComparisonView forecasts={forecasts} />
-            )}
-
-            {activeTab === 'track-record' && (
-              <TrackRecordView
-                records={trackRecords}
-                stats={modelStats}
-              />
-            )}
-          </div>
+      {/* Main Workspace Area (Offset by sidebar width on large screens) */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-72 min-h-screen">
+        {/* Proactive Alert Banner (Visible only in Authority Mode) */}
+        {user.role === 'authority' && alerts.length > 0 && (
+          <AlertBanner
+            alerts={alerts}
+            onSelectAlert={(a) => setActiveAlertForWhy(a)}
+          />
         )}
-      </main>
+
+        {/* Dynamic Operational Content */}
+        <main className="flex-1 p-3 sm:p-5 max-w-[1600px] w-full mx-auto flex flex-col">
+          {isLoadingInitial ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-24 space-y-4">
+              <div className="w-8 h-8 border-2 border-neutral-700 border-t-sky-500 rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-neutral-400 font-sans">
+                Loading VAAYU Intelligence Network...
+              </p>
+            </div>
+          ) : user.role === 'civilian' ? (
+            /* Simplified Public Citizen Experience */
+            <PublicView forecasts={forecasts} />
+          ) : (
+            /* Authority / Decision-Maker Experience */
+            <div className="flex-1 flex flex-col">
+              {/* 1. CENTRAL HOME TAB (Draggable Widget Organizer) */}
+              {activeTab === 'home' && (
+                <HomeWidgetDashboard
+                  forecasts={forecasts}
+                  selectedHour={selectedHour}
+                  alerts={alerts}
+                  fireHotspots={fireHotspots}
+                  firePlumes={firePlumes}
+                  inversionTrend={inversionTrend}
+                  trackRecords={trackRecords}
+                  modelStats={modelStats}
+                  dataSources={dataSources}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onOpenAlert={(alert) => setActiveAlertForWhy(alert)}
+                  onSelectStation={(stId) => setSelectedStationId(stId)}
+                />
+              )}
+
+              {/* 2. SPATIAL MAP TAB */}
+              {activeTab === 'map' && (
+                <div className="flex-1 flex flex-col gap-4">
+                  <TimeSlider
+                    currentHour={selectedHour}
+                    onHourChange={setSelectedHour}
+                    maxHours={72}
+                  />
+                  <div className="flex-1 h-[68vh] min-h-[500px]">
+                    <MapView
+                      forecasts={forecasts}
+                      selectedHour={selectedHour}
+                      selectedStationId={selectedStationId}
+                      onSelectStation={setSelectedStationId}
+                      edges={edges}
+                      fireHotspots={fireHotspots}
+                      firePlumes={firePlumes}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 3. INVERSION & FIRE TAB */}
+              {activeTab === 'inversion-fire' && (
+                <InversionFirePanel
+                  hotspots={fireHotspots}
+                  plumes={firePlumes}
+                  trendData={inversionTrend}
+                  selectedHour={selectedHour}
+                />
+              )}
+
+              {/* 4. MODEL COMPARISON TAB */}
+              {activeTab === 'comparison' && (
+                <ModelComparisonView forecasts={forecasts} />
+              )}
+
+              {/* 5. TRACK RECORD TAB */}
+              {activeTab === 'track-record' && (
+                <TrackRecordView
+                  records={trackRecords}
+                  stats={modelStats}
+                />
+              )}
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Station Forecast Deep-Dive Drawer Modal */}
       <StationDetailModal
@@ -239,4 +289,5 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
 export default App;
