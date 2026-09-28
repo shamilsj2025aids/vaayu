@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import DraggableWidgetGrid, { WidgetItem, WidgetSize } from './ui/draggable-widget-grid';
 import { 
@@ -230,11 +230,64 @@ const ResizeCornerHandle: React.FC<{
     hasMoved: boolean;
   } | null>(null);
 
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onGlobalMove = (e: PointerEvent) => {
+      if (!dragStartRef.current) return;
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        dragStartRef.current.hasMoved = true;
+      }
+      const target = computeTargetSize(
+        dx,
+        dy,
+        dragStartRef.current.initialSize,
+        dragStartRef.current.currentLiveSize
+      );
+      if (target !== dragStartRef.current.currentLiveSize) {
+        dragStartRef.current.currentLiveSize = target;
+        onLiveResize(target);
+      }
+    };
+
+    const onGlobalUp = (e: PointerEvent) => {
+      if (!dragStartRef.current) return;
+      const { hasMoved, initialSize } = dragStartRef.current;
+      dragStartRef.current = null;
+      setIsDragging(false);
+
+      if (hasMoved) {
+        onCommit();
+      } else {
+        // Clean click: cycle sizes smoothly
+        const cycle: Record<WidgetSize, WidgetSize> = {
+          sm: 'wide',
+          wide: 'lg',
+          lg: 'sm',
+          tall: 'sm',
+        };
+        const next = cycle[initialSize];
+        onLiveResize(next);
+        onCommit();
+      }
+    };
+
+    window.addEventListener('pointermove', onGlobalMove);
+    window.addEventListener('pointerup', onGlobalUp);
+    window.addEventListener('pointercancel', onGlobalUp);
+
+    return () => {
+      window.removeEventListener('pointermove', onGlobalMove);
+      window.removeEventListener('pointerup', onGlobalUp);
+      window.removeEventListener('pointercancel', onGlobalUp);
+    };
+  }, [isDragging, onCommit, onLiveResize]);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
-    try {
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
+    e.preventDefault();
     dragStartRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -243,50 +296,6 @@ const ResizeCornerHandle: React.FC<{
       hasMoved: false,
     };
     setIsDragging(true);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragStartRef.current) return;
-    const dx = e.clientX - dragStartRef.current.startX;
-    const dy = e.clientY - dragStartRef.current.startY;
-    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-      dragStartRef.current.hasMoved = true;
-    }
-    const target = computeTargetSize(
-      dx,
-      dy,
-      dragStartRef.current.initialSize,
-      dragStartRef.current.currentLiveSize
-    );
-    if (target !== dragStartRef.current.currentLiveSize) {
-      dragStartRef.current.currentLiveSize = target;
-      onLiveResize(target);
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragStartRef.current) return;
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (_) {}
-    const { hasMoved } = dragStartRef.current;
-    dragStartRef.current = null;
-    setIsDragging(false);
-
-    if (hasMoved) {
-      onCommit();
-    } else {
-      // Clean click: cycle sizes smoothly
-      const cycle: Record<WidgetSize, WidgetSize> = {
-        sm: 'wide',
-        wide: 'lg',
-        lg: 'sm',
-        tall: 'sm',
-      };
-      const next = cycle[currentSize];
-      onLiveResize(next);
-      onCommit();
-    }
   };
 
   const previewInfo = SIZE_DISPLAY[currentSize];
@@ -321,12 +330,15 @@ const ResizeCornerHandle: React.FC<{
       {/* Corner grip handle: curved and attached to the corner radius of the box */}
       <div
         data-no-drag
+        draggable={false}
+        onDragStart={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
         title="Drag to live resize · click to cycle"
-        className={`absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end z-30 group touch-none select-none transition-transform ${
+        className={`absolute bottom-0 right-0 w-11 h-11 cursor-se-resize flex items-end justify-end p-1 z-30 group touch-none select-none transition-transform ${
           isDragging ? 'scale-115' : 'hover:scale-105'
         }`}
       >
@@ -382,50 +394,11 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
 
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const [catalogFilter, setCatalogFilter] = useState<string>('all');
-  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
 
   const updateWidgets = (newWidgets: CustomWidget[]) => {
     const capped = newWidgets.slice(0, MAX_WIDGETS);
     setWidgets(capped);
     localStorage.setItem('aeris_home_widgets_v3', JSON.stringify(capped));
-  };
-
-  const moveWidget = (id: string, direction: 'left' | 'right') => {
-    const idx = widgets.findIndex(w => w.id === id);
-    if (idx === -1) return;
-    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
-    if (targetIdx < 0 || targetIdx >= widgets.length) return;
-    const updated = [...widgets];
-    const [moved] = updated.splice(idx, 1);
-    updated.splice(targetIdx, 0, moved);
-    updateWidgets(updated);
-  };
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData('text/plain', id);
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedWidgetId(id);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const sourceId = e.dataTransfer.getData('text/plain') || draggedWidgetId;
-    setDraggedWidgetId(null);
-    if (!sourceId || sourceId === targetId) return;
-
-    const sourceIdx = widgets.findIndex(w => w.id === sourceId);
-    const targetIdx = widgets.findIndex(w => w.id === targetId);
-    if (sourceIdx === -1 || targetIdx === -1) return;
-
-    const updated = [...widgets];
-    const [moved] = updated.splice(sourceIdx, 1);
-    updated.splice(targetIdx, 0, moved);
-    updateWidgets(updated);
   };
 
   const activeAlert = alerts[0];
@@ -489,24 +462,13 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   };
 
   const renderWidgetContent = (item: CustomWidget, size: WidgetSize, isPreview: boolean = false) => {
-    const isDragged = !isPreview && draggedWidgetId === item.id;
     return (
       <div 
         data-widget-id={item.id}
-        draggable={!isPreview}
-        onDragOver={!isPreview ? handleDragOver : undefined}
-        onDrop={!isPreview ? (e) => handleDrop(e, item.id) : undefined}
-        className={`relative w-full h-full p-3 sm:p-3.5 flex flex-col justify-between bg-[#0a2e21] text-white rounded-2xl select-none font-sans border-2 transition-colors duration-200 shadow-lg ${
-          isDragged 
-            ? 'border-white bg-[#0e3d2c] opacity-60 scale-95' 
-            : 'border-emerald-600/40 hover:border-emerald-500/70 shadow-black/25'
-        }`}
+        className="relative w-full h-full p-3 sm:p-3.5 flex flex-col justify-between bg-[#0a2e21] text-white rounded-2xl select-none font-sans border-2 border-emerald-600/40 hover:border-emerald-500/70 shadow-lg shadow-black/25 transition-colors duration-200"
       >
         {/* Widget Top Bar: Clean Minimalist Title + Grip + Size Indicator */}
         <div 
-          draggable={!isPreview}
-          onDragStart={!isPreview ? (e) => handleDragStart(e, item.id) : undefined}
-          onDragEnd={!isPreview ? () => setDraggedWidgetId(null) : undefined}
           className={`flex items-center justify-between gap-1.5 border-b border-[#134e38] pb-1.5 mb-1.5 ${
             !isPreview ? 'cursor-grab active:cursor-grabbing' : ''
           }`}
