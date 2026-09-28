@@ -54,11 +54,10 @@ export const MapView: React.FC<MapViewProps> = ({
       maxZoom: 16,
     });
 
-    // Dark Tile Layer (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-      subdomains: 'abcd',
-      maxZoom: 19,
+    // Dark Tile Layer (Stadia Maps — Alidade Smooth Dark)
+    L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=cb1_2t44_1_e6a513ca214da31c552345b1', {
+      attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; OpenStreetMap',
+      maxZoom: 20,
     }).addTo(map);
 
     // Layer groups

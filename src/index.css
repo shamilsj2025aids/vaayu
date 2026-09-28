@@ -31,40 +31,77 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: 'Lato', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     font-size: 1rem;
     line-height: 1.55;
   }
 
-  /* Danfo font exclusively for 'VAAYU' */
-  .font-vaayu, .font-danfo, .danfo-regular {
-    font-family: "Danfo", serif, system-ui;
-    font-weight: 400;
+  /* Editorial serif font for brand and headings */
+  .font-aeris, .font-vaayu, .font-danfo, .danfo-regular, .font-brand {
+    font-family: "Newsreader", "Playfair Display", Georgia, serif;
+    font-weight: 500;
     font-style: normal;
-    letter-spacing: 0.04em;
+    letter-spacing: -0.01em;
   }
 
-  h1, h2, h3, .font-heading, .font-title, .righteous-regular {
-    font-family: "Righteous", sans-serif;
+  /* Main Page Titles in Limelight */
+  h1, .font-title, .font-limelight {
+    font-family: "Limelight", cursive, serif;
     font-weight: 400;
     font-style: normal;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
   }
 
-  .righteous-regular {
-    font-family: "Righteous", sans-serif;
+  /* Subheadings like "Central Telemetry Overview", Section Headings, and Righteous Elements in Archivo Black */
+  h2, h3, .font-heading, .font-subheading, .font-archivo, .font-archivo-black, .font-righteous, .righteous, .righteous-regular {
+    font-family: 'Archivo Black', 'Plus Jakarta Sans', sans-serif;
     font-weight: 400;
     font-style: normal;
+    letter-spacing: -0.01em;
   }
 
-  h4, h5, h6, .font-subheading {
-    font-family: 'Lato', system-ui, sans-serif;
-    font-weight: 700;
+  /* Explicit override wherever righteous is referenced */
+  .font-righteous, .righteous, .righteous-regular {
+    font-family: 'Archivo Black', 'Plus Jakarta Sans', sans-serif !important;
+  }
+
+  h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 600;
   }
 
   .font-numbers, .metric-number {
-    font-family: 'Archivo Black', sans-serif;
+    font-family: 'Archivo Black', 'Plus Jakarta Sans', sans-serif;
     letter-spacing: 0.03em;
+  }
+
+  /* Retro Monospace / Pixel AI Font */
+  .font-vt323, .font-ai, .font-pixel {
+    font-family: 'VT323', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* Archivo Black Display Font */
+  .font-archivo, .font-archivo-black {
+    font-family: 'Archivo Black', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
+  }
+
+  /* Force 100% solid black background and white text for Dynamic Island */
+  .dynamic-island-black {
+    background-color: #000000 !important;
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  /* Prevent browser autofill from turning inputs light blue */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #0a2e21 inset !important;
+    -webkit-text-fill-color: #f0fdf4 !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }
 
@@ -104,7 +141,7 @@
 /* Leaflet map green and white theme styling */
 .leaflet-container {
   background-color: #061d15 !important;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .leaflet-tile-pane {
@@ -129,3 +166,122 @@
   background: #0a2e21 !important;
   border: 1px solid #134e38 !important;
 }
+
+/* Disco-ish Green dynamic lighting animations for Dynamic Island AI Agent */
+@keyframes disco-green-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes disco-glow-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 16px rgba(16, 185, 129, 0.4),
+      0 0 32px rgba(52, 211, 153, 0.2),
+      inset 0 0 15px rgba(5, 223, 114, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 32px rgba(5, 223, 114, 0.8),
+      0 0 60px rgba(16, 185, 129, 0.45),
+      inset 0 0 25px rgba(163, 230, 53, 0.35);
+  }
+}
+
+@keyframes disco-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.disco-green-text {
+  background: linear-gradient(
+    90deg,
+    #10b981 0%,
+    #05df72 20%,
+    #a3e635 40%,
+    #00ff87 60%,
+    #34d399 80%,
+    #10b981 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: disco-green-flow 2.8s linear infinite;
+  display: inline-block;
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.55));
+}
+
+.disco-green-card {
+  animation: disco-glow-pulse 3s ease-in-out infinite;
+}
+
+/* Tailwind utility alias */
+.animate-disco-green {
+  background: linear-gradient(
+    90deg,
+    #10b981 0%,
+    #05df72 20%,
+    #a3e635 40%,
+    #00ff87 60%,
+    #34d399 80%,
+    #10b981 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: disco-green-flow 2.4s linear infinite;
+  display: inline-block;
+  filter: drop-shadow(0 0 6px rgba(5, 223, 114, 0.5));
+}
+
+/* Dynamic Disco Ball Shimmer & Continuous Color Rotation */
+@keyframes disco-ball-cycle {
+  0% {
+    filter: hue-rotate(0deg) drop-shadow(0 0 6px rgba(16, 185, 129, 0.8));
+  }
+  25% {
+    filter: hue-rotate(25deg) drop-shadow(0 0 9px rgba(5, 223, 114, 0.95));
+  }
+  50% {
+    filter: hue-rotate(-20deg) drop-shadow(0 0 11px rgba(163, 230, 53, 0.9));
+  }
+  75% {
+    filter: hue-rotate(35deg) drop-shadow(0 0 9px rgba(0, 255, 135, 0.95));
+  }
+  100% {
+    filter: hue-rotate(0deg) drop-shadow(0 0 6px rgba(16, 185, 129, 0.8));
+  }
+}
+
+@keyframes disco-facet-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.animate-disco-ball {
+  animation: disco-ball-cycle 2.6s linear infinite;
+  transform-origin: center;
+}
+
+.animate-disco-facet {
+  animation: disco-facet-twinkle 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+

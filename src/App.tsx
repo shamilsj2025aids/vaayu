@@ -51,6 +51,18 @@ export const App: React.FC = () => {
 
   // Active Authority Tab (defaults to 'home' central widget organizer)
   const [activeTab, setActiveTab] = useState<AuthorityTab>('home');
+  const [showIntroPortal, setShowIntroPortal] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('aeris_sidebar_collapsed') === 'true';
+  });
+
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('aeris_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   // Forecast & Telemetry State
   const [forecasts, setForecasts] = useState<Map<string, StationForecast>>(new Map());
@@ -127,11 +139,13 @@ export const App: React.FC = () => {
 
   const handleLogin = (newUser: AuthUser) => {
     setUser(newUser);
+    setShowIntroPortal(true);
     localStorage.setItem('aeris_auth_user', JSON.stringify(newUser));
   };
 
   const handleLogout = () => {
     setUser(null);
+    setShowIntroPortal(false);
     localStorage.removeItem('aeris_auth_user');
     localStorage.removeItem('vaayu_auth_user');
   };
@@ -154,14 +168,49 @@ export const App: React.FC = () => {
 
   const selectedForecast = selectedStationId ? forecasts.get(selectedStationId) || null : null;
 
-  // If not logged in, display the Login Portal
+  // 1. If not logged in, display the Login Portal
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
+  // 2. Right after sign in: Show the interactive Glyph portal scroll experience
+  if (showIntroPortal) {
+    return (
+      <div className="min-h-screen bg-[#061d15] text-white flex flex-col font-sans">
+        <Demo
+          word="AERIS"
+          onEnterDashboard={() => {
+            setShowIntroPortal(false);
+            setActiveTab('home');
+          }}
+        />
+      </div>
+    );
+  }
+
+  const getPageTitle = (tab: AuthorityTab, role?: string): string => {
+    if (role === 'civilian') {
+      return 'CITIZEN ADVISORY';
+    }
+    switch (tab) {
+      case 'home':
+        return 'HOME OVERVIEW';
+      case 'map':
+        return 'SPATIAL MAP & GRAPH';
+      case 'inversion-fire':
+        return 'INVERSION & FIRE';
+      case 'comparison':
+        return 'CAMS VS GNN';
+      case 'track-record':
+        return 'TRACK RECORD';
+      default:
+        return 'HOME OVERVIEW';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#f8faf9] text-[#0c1212] flex flex-col lg:flex-row font-sans">
-      {/* Sleek Vertical Sidebar in White & Green */}
+    <div className="min-h-screen bg-[#061d15] text-[#f0fdf4] flex flex-col lg:flex-row font-sans selection:bg-emerald-600 selection:text-white">
+      {/* Sleek Retractable Vertical Sidebar */}
       <Sidebar
         user={user}
         onLogout={handleLogout}
@@ -173,17 +222,29 @@ export const App: React.FC = () => {
         lastRefreshTime={lastRefreshTime}
         alerts={alerts}
         onSelectAlert={(a) => setActiveAlertForWhy(a)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
       />
 
-      {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-72 min-h-screen">
-        {/* Proactive Alert Banner (Visible only in Authority Mode) */}
-        {user.role === 'authority' && alerts.length > 0 && activeTab !== 'portal' && (
+      {/* Main Workspace Area with smooth margin transition matching sidebar width */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} min-h-screen`}>
+        {/* Dynamic Island Proactive Alert Banner */}
+        {alerts.length > 0 && (
           <AlertBanner
             alerts={alerts}
             onSelectAlert={(a) => setActiveAlertForWhy(a)}
           />
         )}
+
+        {/* Dynamic Page Title in Limelight (Beneath Dynamic Island) */}
+        <div className="w-full text-center mt-5 sm:mt-8 md:mt-10 mb-3 sm:mb-5 px-4 select-none">
+          <h1
+            className="font-limelight text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal tracking-wider text-white uppercase drop-shadow-md"
+            style={{ fontFamily: "'Limelight', cursive, serif" }}
+          >
+            {getPageTitle(activeTab, user.role)}
+          </h1>
+        </div>
 
         {/* Dynamic Operational Content */}
         <main className="flex-1 p-3 sm:p-5 max-w-[1600px] w-full mx-auto flex flex-col">
@@ -192,7 +253,7 @@ export const App: React.FC = () => {
               <div className="w-12 h-12 rounded-full border-4 border-emerald-800 border-t-white animate-spin" />
               <div className="text-center space-y-1">
                 <p className="text-sm font-bold text-white font-sans">
-                  Synchronizing VAAYU Atmosphere Network...
+                  Synchronizing AERIS Atmosphere Network...
                 </p>
                 <p className="text-xs text-[#a7d0bf]">
                   Coupling 56 ground CAAQMS stations with NASA FIRMS active fire telemetry
@@ -204,36 +265,21 @@ export const App: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between bg-[#0a2e21] px-4 py-2.5 rounded-xl border border-emerald-600/40 shadow-sm text-white">
                 <div className="flex items-center gap-2 text-xs text-white font-bold">
-                  <span className="flex items-center gap-2"><span className="font-vaayu text-xl tracking-wider text-white">VAAYU</span><span className="font-heading text-xs font-bold text-emerald-200">Live Citizen Portal</span></span>
+                  <span className="flex items-center gap-2.5">
+                    <img
+                      src="/aeris-logo-transparent.png"
+                      alt="AERIS"
+                      className="h-6 w-auto object-contain"
+                    />
+                    <span className="text-xs font-bold text-emerald-300 pl-2 border-l border-emerald-700/60 uppercase tracking-wider">Live Citizen Portal</span>
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab(activeTab === 'portal' ? 'home' : 'portal')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-emerald-100 text-[#072118] text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#16a34a]" />
-                  <span>{activeTab === 'portal' ? 'Return to Citizen Advisory' : 'Explore VAAYU Glyph Portal'}</span>
-                </button>
               </div>
-
-              {activeTab === 'portal' ? (
-                <div className="bg-[#0a2e21] rounded-2xl border-2 border-emerald-600/40 shadow-md overflow-hidden">
-                  <Demo word="VAAYU" onEnterDashboard={() => setActiveTab('home')} />
-                </div>
-              ) : (
-                <PublicView forecasts={forecasts} />
-              )}
+              <PublicView forecasts={forecasts} />
             </div>
           ) : (
             /* Authority / Decision-Maker Experience */
             <div className="flex-1 flex flex-col">
-              {/* 0. INTERACTIVE GLYPH PORTAL TAB */}
-              {activeTab === 'portal' && (
-                <div className="flex-1 bg-[#0a2e21] rounded-2xl border-2 border-emerald-600/40 shadow-md overflow-hidden min-h-[750px]">
-                  <Demo word="VAAYU" onEnterDashboard={() => setActiveTab('home')} />
-                </div>
-              )}
-
               {/* 1. CENTRAL HOME TAB (Draggable Widget Organizer) */}
               {activeTab === 'home' && (
                 <HomeWidgetDashboard

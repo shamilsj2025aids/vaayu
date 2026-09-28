@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import DraggableWidgetGrid, { WidgetItem, WidgetSize } from './ui/draggable-widget-grid';
 import { 
   StationForecast, 
@@ -10,7 +11,7 @@ import {
   DataSourceStatus
 } from '../types';
 import { formatVentilation, formatInversionLevel } from '../utils/formatters';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Pencil, SlidersHorizontal, Wind, Zap } from 'lucide-react';
 
 interface HomeWidgetDashboardProps {
   forecasts: Map<string, StationForecast>;
@@ -38,20 +39,26 @@ interface CustomWidget extends WidgetItem {
     | 'proactive-alert'
     | 'high-risk-stations'
     | 'system-freshness'
-    | 'plume-trajectory';
+    | 'plume-trajectory'
+    | 'delhi-aqi-gauge'
+    | 'meteo-surface';
 }
 
-const MAX_WIDGETS = 10;
+const MAX_WIDGETS = 14;
 
 const DEFAULT_HOME_WIDGETS: CustomWidget[] = [
   { id: 'w-alert', type: 'proactive-alert', size: 'wide', label: 'Proactive Advisory' },
   { id: 'w-inversion', type: 'inversion-gauge', size: 'sm', label: 'Inversion Index' },
   { id: 'w-ventilation', type: 'ventilation-card', size: 'sm', label: 'Ventilation Capacity' },
-  { id: 'w-map', type: 'map-overview', size: 'lg', label: 'Spatial Telemetry Grid' },
+  { id: 'w-aqi', type: 'delhi-aqi-gauge', size: 'sm', label: 'Delhi Mean AQI' },
+  { id: 'w-meteo', type: 'meteo-surface', size: 'sm', label: 'Surface Boundary' },
   { id: 'w-firms', type: 'firms-fires', size: 'wide', label: 'NASA FIRMS Fires' },
-  { id: 'w-cams', type: 'cams-vs-gnn', size: 'wide', label: 'CAMS vs GNN Residual' },
+  { id: 'w-plume', type: 'plume-trajectory', size: 'sm', label: 'Plume Trajectory' },
   { id: 'w-accuracy', type: 'track-record', size: 'sm', label: 'Severe Event Recall' },
+  { id: 'w-cams', type: 'cams-vs-gnn', size: 'wide', label: 'CAMS vs GNN' },
   { id: 'w-stations', type: 'high-risk-stations', size: 'wide', label: 'Focal CAAQMS Stations' },
+  { id: 'w-freshness', type: 'system-freshness', size: 'sm', label: 'Pipeline Health' },
+  { id: 'w-map', type: 'map-overview', size: 'wide', label: 'Spatial Telemetry Grid' },
 ];
 
 const AVAILABLE_WIDGET_CATALOG: { 
@@ -69,10 +76,17 @@ const AVAILABLE_WIDGET_CATALOG: {
     tab: 'Alerts',
   },
   { 
+    type: 'delhi-aqi-gauge', 
+    label: 'Delhi-NCR Basin AQI & GRAP Level', 
+    description: 'Real-time composite basin-wide average AQI and activated emergency stage',
+    defaultSize: 'sm', 
+    tab: 'Alerts',
+  },
+  { 
     type: 'map-overview', 
     label: 'Spatial Telemetry Summary Grid', 
     description: 'Live sensor network overview with wind direction and connectivity',
-    defaultSize: 'lg', 
+    defaultSize: 'wide', 
     tab: 'Spatial Map',
   },
   { 
@@ -90,6 +104,13 @@ const AVAILABLE_WIDGET_CATALOG: {
     tab: 'Inversion & Fire',
   },
   { 
+    type: 'meteo-surface', 
+    label: 'Surface Boundary & Dispersion Vector', 
+    description: 'Planetary boundary layer height, ambient temperature, humidity & wind direction',
+    defaultSize: 'sm', 
+    tab: 'Inversion & Fire',
+  },
+  { 
     type: 'firms-fires', 
     label: 'NASA FIRMS Stubble Fires & MW Power', 
     description: 'Real-time satellite detections in Punjab and Haryana upwind corridor',
@@ -100,7 +121,7 @@ const AVAILABLE_WIDGET_CATALOG: {
     type: 'plume-trajectory', 
     label: 'Stubble Plume Wind Corridor & ETA', 
     description: 'Atmospheric transport vectors entering North-West Delhi',
-    defaultSize: 'wide', 
+    defaultSize: 'sm', 
     tab: 'Inversion & Fire',
   },
   { 
@@ -133,26 +154,92 @@ const AVAILABLE_WIDGET_CATALOG: {
   },
 ];
 
+/* ---- Size label map ---- */
+const SIZE_DISPLAY: Record<WidgetSize, { label: string; cols: string; icon: string }> = {
+  sm:   { label: 'Small (1×1)',  cols: '1×1', icon: '⊡' },
+  wide: { label: 'Wide (2×1)',   cols: '2×1', icon: '⊟' },
+  tall: { label: 'Tall (1×2)',   cols: '1×2', icon: '⊞' },
+  lg:   { label: 'Large (2×2)',  cols: '2×2', icon: '⊠' },
+};
+
+/** Compute the target size from the drag delta and initial size with hysteresis */
+function computeTargetSize(
+  dx: number,
+  dy: number,
+  initialSize: WidgetSize,
+  currentLiveSize: WidgetSize
+): WidgetSize {
+  // If pointer returned close to initial press location, snap back to initial size
+  if (Math.abs(dx) <= 22 && Math.abs(dy) <= 22) {
+    return initialSize;
+  }
+
+  const THRESHOLD = 36;
+
+  if (initialSize === 'sm') {
+    // sm (1x1): right -> wide (2x1), down -> tall (1x2), diagonal -> lg (2x2)
+    if (dx > THRESHOLD && dy > THRESHOLD) return 'lg';
+    if (dx > THRESHOLD) return 'wide';
+    if (dy > THRESHOLD) return 'tall';
+    return 'sm';
+  }
+
+  if (initialSize === 'wide') {
+    // wide (2x1): left -> sm (1x1), down -> lg (2x2), left+down -> tall (1x2)
+    if (dx < -THRESHOLD && dy > THRESHOLD) return 'tall';
+    if (dx < -THRESHOLD) return 'sm';
+    if (dy > THRESHOLD) return 'lg';
+    return 'wide';
+  }
+
+  if (initialSize === 'tall') {
+    // tall (1x2): up -> sm (1x1), right -> lg (2x2), up+right -> wide (2x1)
+    if (dx > THRESHOLD && dy < -THRESHOLD) return 'wide';
+    if (dy < -THRESHOLD) return 'sm';
+    if (dx > THRESHOLD) return 'lg';
+    return 'tall';
+  }
+
+  if (initialSize === 'lg') {
+    // lg (2x2): left+up -> sm (1x1), left -> tall (1x2), up -> wide (2x1)
+    if (dx < -THRESHOLD && dy < -THRESHOLD) return 'sm';
+    if (dx < -THRESHOLD) return 'tall';
+    if (dy < -THRESHOLD) return 'wide';
+    return 'lg';
+  }
+
+  return currentLiveSize;
+}
+
 /**
- * iOS Control Center style Corner Resize Handle
- * Green and white aesthetic
+ * Resize handle with live smooth morphing transformation.
+ * As the user drags the corner grip, the widget transforms into each size option
+ * in real-time with fluid Motion spring animations and an elegant floating pill indicator.
  */
 const ResizeCornerHandle: React.FC<{
   currentSize: WidgetSize;
-  onResize: (newSize: WidgetSize) => void;
-}> = ({ currentSize, onResize }) => {
+  onLiveResize: (newSize: WidgetSize) => void;
+  onCommit: () => void;
+}> = ({ currentSize, onLiveResize, onCommit }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ x: number; y: number; size: WidgetSize; hasMoved: boolean } | null>(null);
+  const dragStartRef = useRef<{
+    startX: number;
+    startY: number;
+    initialSize: WidgetSize;
+    currentLiveSize: WidgetSize;
+    hasMoved: boolean;
+  } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     try {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (err) {}
+    } catch (_) {}
     dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      size: currentSize,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialSize: currentSize,
+      currentLiveSize: currentSize,
       hasMoved: false,
     };
     setIsDragging(true);
@@ -160,10 +247,20 @@ const ResizeCornerHandle: React.FC<{
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragStartRef.current) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
       dragStartRef.current.hasMoved = true;
+    }
+    const target = computeTargetSize(
+      dx,
+      dy,
+      dragStartRef.current.initialSize,
+      dragStartRef.current.currentLiveSize
+    );
+    if (target !== dragStartRef.current.currentLiveSize) {
+      dragStartRef.current.currentLiveSize = target;
+      onLiveResize(target);
     }
   };
 
@@ -171,74 +268,88 @@ const ResizeCornerHandle: React.FC<{
     if (!dragStartRef.current) return;
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch (err) {}
+    } catch (_) {}
+    const { hasMoved } = dragStartRef.current;
+    dragStartRef.current = null;
+    setIsDragging(false);
 
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    const startSize = dragStartRef.current.size;
-
-    if (dragStartRef.current.hasMoved) {
-      if (startSize === 'sm') {
-        if (dx > 35 && dy > 35) {
-          onResize('lg');
-        } else if (dx > 30) {
-          onResize('wide');
-        } else if (dy > 30) {
-          onResize('tall');
-        }
-      } else if (startSize === 'wide') {
-        if (dy > 35) {
-          onResize('lg');
-        } else if (dx < -30) {
-          onResize('sm');
-        }
-      } else if (startSize === 'tall') {
-        if (dx > 30) {
-          onResize('lg');
-        } else if (dy < -30) {
-          onResize('sm');
-        }
-      } else if (startSize === 'lg') {
-        if (dx < -35 && dy < -35) {
-          onResize('sm');
-        } else if (dx < -30) {
-          onResize('tall');
-        } else if (dy < -30) {
-          onResize('wide');
-        }
-      }
+    if (hasMoved) {
+      onCommit();
     } else {
-      const cycleMap: Record<WidgetSize, WidgetSize> = {
+      // Clean click: cycle sizes smoothly
+      const cycle: Record<WidgetSize, WidgetSize> = {
         sm: 'wide',
         wide: 'lg',
         lg: 'sm',
         tall: 'sm',
       };
-      onResize(cycleMap[currentSize] || 'sm');
+      const next = cycle[currentSize];
+      onLiveResize(next);
+      onCommit();
     }
-
-    dragStartRef.current = null;
-    setIsDragging(false);
   };
 
+  const previewInfo = SIZE_DISPLAY[currentSize];
+
   return (
-    <div
-      data-no-drag
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      title="Click to cycle size, or drag to resize"
-      className={`absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end p-1.5 z-30 group touch-none select-none transition-all ${
-        isDragging ? 'scale-125' : 'hover:scale-110'
-      }`}
-    >
-      <div className={`w-3.5 h-3.5 rounded-br-sm border-r-2 border-b-2 transition-all ${
-        isDragging
-          ? 'border-white shadow-[0_0_8px_rgba(255,255,255,0.9)] scale-110'
-          : 'border-emerald-400 group-hover:border-white'
-      }`} />
-    </div>
+    <>
+      {/* Sleek Floating Live Size Pill while dragging */}
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div
+            key="resize-pill"
+            initial={{ opacity: 0, y: 10, scale: 0.88 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.88 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/95 border border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] backdrop-blur-md"
+          >
+            <span className="text-emerald-400 font-mono text-sm leading-none animate-pulse">
+              {previewInfo.icon}
+            </span>
+            <span className="font-mono text-xs font-black text-emerald-300 tracking-wider">
+              {previewInfo.cols}
+            </span>
+            <span className="w-1 h-1 rounded-full bg-emerald-400/60" />
+            <span className="font-sans text-xs font-bold uppercase tracking-wider text-white">
+              {previewInfo.label}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Corner grip handle: curved and attached to the corner radius of the box */}
+      <div
+        data-no-drag
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        title="Drag to live resize · click to cycle"
+        className={`absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end z-30 group touch-none select-none transition-transform ${
+          isDragging ? 'scale-115' : 'hover:scale-105'
+        }`}
+      >
+        <svg
+          viewBox="0 0 28 28"
+          className="w-7 h-7 pointer-events-none transition-all duration-200"
+          fill="none"
+        >
+          <path
+            d="M 5 26.5 L 13.5 26.5 A 13 13 0 0 0 26.5 13.5 L 26.5 5"
+            fill="none"
+            stroke={isDragging ? '#6ee7b7' : '#10b981'}
+            strokeWidth={isDragging ? '2.75' : '2'}
+            strokeLinecap="round"
+            className={`transition-all duration-200 ${
+              isDragging
+                ? 'stroke-emerald-300 drop-shadow-[0_0_10px_rgba(110,231,183,1)]'
+                : 'stroke-emerald-500/70 group-hover:stroke-emerald-300 group-hover:drop-shadow-[0_0_6px_rgba(110,231,183,0.8)]'
+            }`}
+          />
+        </svg>
+      </div>
+    </>
   );
 };
 
@@ -257,11 +368,11 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   onSelectStation,
 }) => {
   const [widgets, setWidgets] = useState<CustomWidget[]>(() => {
-    const saved = localStorage.getItem('aeris_home_widgets') || localStorage.getItem('vaayu_home_widgets');
+    const saved = localStorage.getItem('aeris_home_widgets_v3');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length >= 10) {
           return parsed.slice(0, MAX_WIDGETS);
         }
       } catch (e) {}
@@ -270,12 +381,13 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   });
 
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
+  const [catalogFilter, setCatalogFilter] = useState<string>('all');
   const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
 
   const updateWidgets = (newWidgets: CustomWidget[]) => {
     const capped = newWidgets.slice(0, MAX_WIDGETS);
     setWidgets(capped);
-    localStorage.setItem('aeris_home_widgets', JSON.stringify(capped));
+    localStorage.setItem('aeris_home_widgets_v3', JSON.stringify(capped));
   };
 
   const moveWidget = (id: string, direction: 'left' | 'right') => {
@@ -341,8 +453,15 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
     updateWidgets(widgets.filter(w => w.id !== id));
   };
 
-  const setWidgetSize = (id: string, newSize: WidgetSize) => {
-    updateWidgets(widgets.map(w => w.id === id ? { ...w, size: newSize } : w));
+  const setWidgetSizeLive = (id: string, newSize: WidgetSize) => {
+    setWidgets(prev => prev.map(w => w.id === id ? { ...w, size: newSize } : w));
+  };
+
+  const commitWidgetSize = () => {
+    setWidgets(current => {
+      localStorage.setItem('aeris_home_widgets_v3', JSON.stringify(current));
+      return current;
+    });
   };
 
   const applyPreset = (preset: 'balanced' | 'meteo' | 'taskforce') => {
@@ -352,337 +471,820 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
       updateWidgets([
         { id: 'w-inversion', type: 'inversion-gauge', size: 'sm', label: 'Inversion Index' },
         { id: 'w-ventilation', type: 'ventilation-card', size: 'sm', label: 'Ventilation Capacity' },
+        { id: 'w-meteo', type: 'meteo-surface', size: 'sm', label: 'Surface Boundary' },
         { id: 'w-firms', type: 'firms-fires', size: 'wide', label: 'NASA FIRMS Fires' },
-        { id: 'w-plumes', type: 'plume-trajectory', size: 'wide', label: 'Stubble Plume Wind Corridor' },
+        { id: 'w-plume', type: 'plume-trajectory', size: 'sm', label: 'Stubble Plume Wind Corridor' },
         { id: 'w-cams', type: 'cams-vs-gnn', size: 'wide', label: 'CAMS vs GNN Residual' },
       ]);
     } else if (preset === 'taskforce') {
       updateWidgets([
         { id: 'w-alert', type: 'proactive-alert', size: 'wide', label: 'Proactive Advisory' },
-        { id: 'w-map', type: 'map-overview', size: 'lg', label: 'Spatial Telemetry Grid' },
+        { id: 'w-aqi', type: 'delhi-aqi-gauge', size: 'sm', label: 'Delhi Mean AQI' },
         { id: 'w-stations', type: 'high-risk-stations', size: 'wide', label: 'Focal CAAQMS Stations' },
+        { id: 'w-map', type: 'map-overview', size: 'wide', label: 'Spatial Telemetry Grid' },
         { id: 'w-accuracy', type: 'track-record', size: 'sm', label: 'Severe Event Recall' },
+        { id: 'w-freshness', type: 'system-freshness', size: 'sm', label: 'Pipeline Health' },
       ]);
     }
   };
 
-  const renderWidgetContent = (item: CustomWidget, size: WidgetSize) => {
-    const isDragged = draggedWidgetId === item.id;
+  const renderWidgetContent = (item: CustomWidget, size: WidgetSize, isPreview: boolean = false) => {
+    const isDragged = !isPreview && draggedWidgetId === item.id;
     return (
       <div 
-        onDragOver={handleDragOver}
-        onDrop={(e) => handleDrop(e, item.id)}
-        className={`relative w-full h-full p-4 sm:p-5 flex flex-col justify-between bg-[#0a2e21] text-white rounded-2xl select-none font-sans border-2 transition-all shadow-lg ${
+        data-widget-id={item.id}
+        draggable={!isPreview}
+        onDragOver={!isPreview ? handleDragOver : undefined}
+        onDrop={!isPreview ? (e) => handleDrop(e, item.id) : undefined}
+        className={`relative w-full h-full p-3 sm:p-3.5 flex flex-col justify-between bg-[#0a2e21] text-white rounded-2xl select-none font-sans border-2 transition-colors duration-200 shadow-lg ${
           isDragged 
             ? 'border-white bg-[#0e3d2c] opacity-60 scale-95' 
             : 'border-emerald-600/40 hover:border-emerald-500/70 shadow-black/25'
         }`}
       >
-        {/* Widget Top Bar: Grip, Title, Reorder Arrows, Size Toggle, Close */}
+        {/* Widget Top Bar: Clean Minimalist Title + Grip + Size Indicator */}
         <div 
-          draggable={true}
-          onDragStart={(e) => handleDragStart(e, item.id)}
-          onDragEnd={() => setDraggedWidgetId(null)}
-          className="flex items-center justify-between gap-1.5 border-b border-[#134e38] pb-2.5 mb-2.5 cursor-grab active:cursor-grabbing"
-          title="Drag header to reorder, or use controls on the right"
+          draggable={!isPreview}
+          onDragStart={!isPreview ? (e) => handleDragStart(e, item.id) : undefined}
+          onDragEnd={!isPreview ? () => setDraggedWidgetId(null) : undefined}
+          className={`flex items-center justify-between gap-1.5 border-b border-[#134e38] pb-1.5 mb-1.5 ${
+            !isPreview ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          title={!isPreview ? "Drag header to reorder widget" : undefined}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="text-emerald-400 hover:text-white shrink-0">
-              <GripVertical className="w-4 h-4" />
-            </div>
+            {!isPreview && (
+              <div className="text-emerald-400 hover:text-white shrink-0">
+                <GripVertical className="w-3.5 h-3.5" />
+              </div>
+            )}
 
-            <span className="text-xs sm:text-sm font-bold tracking-wide text-white uppercase truncate block">
+            <span className="text-xs font-bold tracking-wide text-white uppercase truncate block">
               {item.label}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0" data-no-drag>
-            {/* Quick 1-Click Move Left/Right */}
-            <div className="flex items-center bg-[#061d15] border border-emerald-700/60 rounded-lg p-0.5">
-              <button
-                type="button"
-                data-no-drag
-                onClick={(e) => { e.stopPropagation(); moveWidget(item.id, 'left'); }}
-                title="Move earlier"
-                className="w-5 h-5 rounded hover:bg-[#0e3d2c] text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center transition-colors"
-              >
-                &larr;
-              </button>
-              <button
-                type="button"
-                data-no-drag
-                onClick={(e) => { e.stopPropagation(); moveWidget(item.id, 'right'); }}
-                title="Move later"
-                className="w-5 h-5 rounded hover:bg-[#0e3d2c] text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center transition-colors"
-              >
-                &rarr;
-              </button>
-            </div>
-
-            {/* Direct 1-Click Size Switcher */}
-            <div className="flex items-center bg-[#061d15] border border-emerald-700/60 rounded-lg p-0.5">
-              {(['sm', 'wide', 'lg'] as WidgetSize[]).map((sz) => (
-                <button
-                  key={sz}
-                  type="button"
-                  data-no-drag
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setWidgetSize(item.id, sz);
-                  }}
-                  title={`Resize to ${sz}`}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${
-                    item.size === sz
-                      ? 'bg-white text-[#072118] font-black shadow-xs'
-                      : 'text-emerald-300/80 hover:bg-[#0e3d2c] hover:text-white'
-                  }`}
-                >
-                  {sz}
-                </button>
-              ))}
-            </div>
-
-            {/* Remove Widget Button */}
-            <button
-              type="button"
-              data-no-drag
-              onClick={(e) => {
-                e.stopPropagation();
-                removeWidget(item.id);
-              }}
-              title="Remove widget"
-              className="w-5 h-5 rounded-lg bg-[#061d15] hover:bg-rose-950/70 border border-emerald-700/60 hover:border-rose-700 text-emerald-300 hover:text-rose-300 text-xs font-bold transition-colors flex items-center justify-center leading-none"
-            >
-              &times;
-            </button>
-          </div>
+          <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase tracking-wider shrink-0">
+            {item.size === 'sm' ? '1×1' : item.size === 'wide' ? '2×1' : item.size === 'tall' ? '1×2' : '2×2'}
+          </span>
         </div>
 
-        {/* Widget Body Content */}
+        {/* Widget Body Content (Optimized for 2x2, Wide, and Large sizes) */}
         <div className="flex-1 flex flex-col justify-between overflow-hidden">
-          {/* 1. Proactive Alert */}
+          {/* ======================================================== */}
+          {/* 1. Proactive Alert                                       */}
+          {/* ======================================================== */}
           {item.type === 'proactive-alert' && activeAlert && (
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-rose-300 px-2.5 py-1 rounded-lg bg-rose-950/60 border border-rose-800 font-mono">
-                  {activeAlert.grap_stage}
-                </span>
-                <span className="text-xs font-black font-mono text-white">{activeAlert.start_time}</span>
-              </div>
-              <p className="text-xs sm:text-sm text-white font-medium line-clamp-2 leading-relaxed">
-                {activeAlert.subtitle}
-              </p>
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onOpenAlert(activeAlert)}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left inline-flex items-center gap-1"
-              >
-                View Causal Explanation ("The Why") &rarr;
-              </button>
-            </div>
-          )}
-
-          {/* 2. Inversion Gauge */}
-          {item.type === 'inversion-gauge' && (
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl sm:text-5xl font-black font-numbers text-amber-400 tracking-tight">
-                  {currentInv?.score || 55}
-                </span>
-                <span className="text-sm font-bold text-[#a7d0bf] font-mono">/ 100</span>
-              </div>
-              <div className="text-xs sm:text-sm font-bold text-white">
-                {invLevel.label}
-              </div>
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onNavigateTab('inversion-fire')}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold mt-auto text-left"
-              >
-                Open Inversion Telemetry &rarr;
-              </button>
-            </div>
-          )}
-
-          {/* 3. Ventilation Card */}
-          {item.type === 'ventilation-card' && (
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl sm:text-5xl font-black font-numbers text-white tracking-tight">
-                  {(currentInv?.ventilation || 2800).toLocaleString()}
-                </span>
-                <span className="text-sm font-bold text-[#a7d0bf] font-mono">m²/s</span>
-              </div>
-              <div>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${vent.badgeColor}`}>
-                  {vent.label}
-                </span>
-              </div>
-              <p className="text-xs text-[#a7d0bf] mt-1">
-                Ceiling: <span className="font-numbers font-black text-white text-sm">{currentInv?.pblh || 320}</span> m
-              </p>
-            </div>
-          )}
-
-          {/* 4. Spatial Map Overview */}
-          {item.type === 'map-overview' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Stations</span>
-                  <span className="font-numbers font-black text-white text-sm sm:text-base">56 / 56 CPCB</span>
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-rose-400 font-mono uppercase tracking-wider">
+                    {activeAlert.grap_stage}
+                  </span>
+                  <span className="text-[11px] font-mono text-amber-300 font-bold">{activeAlert.start_time}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Fire Nodes</span>
-                  <span className="font-numbers font-black text-amber-400 text-sm sm:text-base">5 Clusters</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Vectors</span>
-                  <span className="font-numbers font-black text-[#86efac] text-sm sm:text-base">315° NW</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Lead Horizon</span>
-                  <span className="font-numbers font-black text-white text-sm sm:text-base">0h to 72h</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-xs sm:text-sm text-[#a7d0bf]">
-                  Interactive spatiotemporal sensor grid with wind dispersion overlay.
+                <p className="text-xs text-white font-medium line-clamp-2 leading-snug">
+                  {activeAlert.subtitle}
                 </p>
                 <button
                   type="button"
                   data-no-drag
+                  onClick={() => onOpenAlert(activeAlert)}
+                  className="text-xs text-[#86efac] hover:text-white font-bold inline-flex items-center gap-1 pt-1"
+                >
+                  Open Advisory &rarr;
+                </button>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-400 font-mono uppercase tracking-wider">
+                    {activeAlert.grap_stage}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-amber-300">
+                    {activeAlert.start_time}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white line-clamp-1">{activeAlert.title}</h4>
+                  <p className="text-xs text-[#d1fae5]/90 mt-0.5 line-clamp-2 leading-relaxed">
+                    {activeAlert.subtitle}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-emerald-900/60 text-xs">
+                  <span className="text-[#a7d0bf]">Lead Time: <strong>+{activeAlert.lead_time_hours}h</strong></span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onOpenAlert(activeAlert)}
+                    className="text-[#86efac] hover:text-white font-bold hover:underline"
+                  >
+                    Causal Explanation ("The Why") &rarr;
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-rose-400 font-mono uppercase tracking-wider">
+                        {activeAlert.grap_stage}
+                      </span>
+                      <span className="text-xs text-neutral-300">Peak: <strong className="text-rose-400 font-numbers">{activeAlert.peak_aqi} AQI</strong></span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-amber-300">
+                      {activeAlert.start_time}
+                    </span>
+                  </div>
+
+                  <h4 className="text-sm sm:text-base font-bold text-white leading-snug">{activeAlert.title}</h4>
+                  <p className="text-xs text-[#d1fae5]/90 mt-1 leading-relaxed line-clamp-2">{activeAlert.subtitle}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block font-bold uppercase tracking-wider">PBLH Collapse</span>
+                    <span className="font-mono font-bold text-emerald-300 text-sm">-{activeAlert.causal_drivers.pblh_drop}m</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block font-bold uppercase tracking-wider">Surface Wind</span>
+                    <span className="font-mono font-bold text-emerald-300 text-sm">{activeAlert.causal_drivers.wind_speed} m/s</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block font-bold uppercase tracking-wider">Inversion Index</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">{activeAlert.causal_drivers.inversion_index}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block font-bold uppercase tracking-wider">Fire Influence</span>
+                    <span className="font-mono font-bold text-orange-400 text-sm">{activeAlert.causal_drivers.fire_influence}%</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between">
+                  <span className="text-[11px] text-[#a7d0bf] truncate max-w-[200px]">
+                    Hotspots: {activeAlert.causal_drivers.accumulation_stations.slice(0, 2).join(', ')}
+                  </span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onOpenAlert(activeAlert)}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-[#061d15] font-bold text-xs transition-colors shrink-0 shadow-sm"
+                  >
+                    Open "The Why" &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 2. Inversion Gauge                                       */}
+          {/* ======================================================== */}
+          {item.type === 'inversion-gauge' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl sm:text-4xl font-black font-numbers text-amber-400 tracking-tight">
+                    {currentInv?.score || 55}
+                  </span>
+                  <span className="text-xs font-bold text-[#a7d0bf] font-mono">/ 100</span>
+                </div>
+                <div className="text-xs font-bold text-white leading-tight">
+                  {invLevel.label}
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  PBLH: <strong className="text-white font-mono">{currentInv?.pblh || 320}m</strong>
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-4xl font-black font-numbers text-amber-400 tracking-tight">
+                      {currentInv?.score || 55}
+                    </span>
+                    <span className="text-xs font-bold text-[#a7d0bf] font-mono">/ 100</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-300">
+                    {invLevel.label}
+                  </span>
+                </div>
+                <div className="w-full bg-[#0e3d2c]/60 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 rounded-full"
+                    style={{ width: `${Math.min(100, currentInv?.score || 55)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#a7d0bf]">
+                  <span>PBLH Ceiling: <strong className="text-white">{currentInv?.pblh || 320} m</strong></span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    Details &rarr;
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl sm:text-5xl font-black font-numbers text-amber-400 tracking-tight">
+                        {currentInv?.score || 55}
+                      </span>
+                      <span className="text-sm font-bold text-[#a7d0bf] font-mono">/ 100</span>
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-white block mt-0.5">
+                      {invLevel.label}
+                    </span>
+                  </div>
+                  <div className="text-right text-xs">
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Lapse Rate Delta</span>
+                    <span className="font-mono text-base font-bold text-amber-300">+3.4°C</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 py-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-[#a7d0bf]">Entrapment Ceiling</span>
+                    <span className="text-white font-mono font-bold">{currentInv?.pblh || 320} meters</span>
+                  </div>
+                  <div className="w-full bg-[#0e3d2c]/60 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 rounded-full"
+                      style={{ width: `${Math.min(100, currentInv?.score || 55)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-neutral-400">
+                    <span>Nominal (&lt;50)</span>
+                    <span>Moderate (50-75)</span>
+                    <span>Severe (&gt;75)</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between">
+                  <p className="text-xs text-[#a7d0bf] line-clamp-1">
+                    Thermal ceiling halts vertical particulate venting.
+                  </p>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-[#061d15] font-bold text-xs transition-colors shrink-0"
+                  >
+                    Inspect Inversion &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 3. Ventilation Card                                      */}
+          {/* ======================================================== */}
+          {item.type === 'ventilation-card' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl sm:text-3xl font-black font-numbers text-white tracking-tight">
+                    {(currentInv?.ventilation || 2800).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-[#a7d0bf] font-mono">m²/s</span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md inline-block w-fit ${vent.badgeColor}`}>
+                  {vent.label}
+                </span>
+                <p className="text-[11px] text-[#a7d0bf]">
+                  PBLH: <strong className="text-white font-mono">{currentInv?.pblh || 320}m</strong>
+                </p>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl sm:text-4xl font-black font-numbers text-white tracking-tight">
+                      {(currentInv?.ventilation || 2800).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-[#a7d0bf] font-mono">m²/s</span>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md inline-block w-fit ${vent.badgeColor}`}>
+                    {vent.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Mixing Ceiling</span>
+                    <span className="font-mono font-bold text-white text-sm">{currentInv?.pblh || 320} m</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Threshold</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">&lt; 2,000 m²/s</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-4xl font-black font-numbers text-white tracking-tight">
+                        {(currentInv?.ventilation || 2800).toLocaleString()}
+                      </span>
+                      <span className="text-sm text-[#a7d0bf] font-mono">m²/s</span>
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-md inline-block mt-1 w-fit ${vent.badgeColor}`}>
+                      {vent.label}
+                    </span>
+                  </div>
+                  <div className="text-right text-xs">
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Critical Threshold</span>
+                    <span className="font-mono text-base font-bold text-rose-400">&lt; 2,000 m²/s</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Wind Factor</span>
+                    <span className="font-mono font-bold text-white text-sm">1.1 m/s</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">PBLH Height</span>
+                    <span className="font-mono font-bold text-white text-sm">{currentInv?.pblh || 320} m</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Airflow Status</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">Low Speed</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">Low horizontal dispersion halts flushing.</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    View Meteorology &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 4. Spatial Map Overview                                  */}
+          {/* ======================================================== */}
+          {item.type === 'map-overview' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="font-numbers text-2xl font-black text-white">56 / 56</span>
+                  <span className="text-xs text-[#a7d0bf] block font-bold">Stations Synced</span>
+                </div>
+                <div className="text-xs text-white">
+                  Wind: <strong className="text-[#86efac] font-mono font-bold">315° NW @ 1.1m/s</strong>
+                </div>
+                <button
+                  type="button"
+                  data-no-drag
                   onClick={() => onNavigateTab('map')}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-100 text-[#072118] text-xs font-bold shrink-0 transition-all shadow-sm"
+                  className="text-xs text-[#86efac] hover:text-white font-bold inline-flex items-center gap-1"
                 >
                   Open Map &rarr;
                 </button>
               </div>
-            </div>
+            ) : size === 'wide' ? (
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Stations</span>
+                    <span className="font-numbers font-black text-white text-sm">56 / 56</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Fire Nodes</span>
+                    <span className="font-numbers font-black text-amber-400 text-sm">5 Clusters</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Vectors</span>
+                    <span className="font-numbers font-black text-[#86efac] text-sm">315° NW</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Horizon</span>
+                    <span className="font-numbers font-black text-white text-sm">72h</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-emerald-900/60">
+                  <span className="text-[#a7d0bf]">Sensor grid & dynamic graph edges</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('map')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    Open Map &rarr;
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Stations</span>
+                    <span className="font-numbers font-black text-white text-sm">56 / 56 CPCB</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Fire Nodes</span>
+                    <span className="font-numbers font-black text-amber-400 text-sm">5 Clusters</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Vectors</span>
+                    <span className="font-numbers font-black text-[#86efac] text-sm">315° NW</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Horizon</span>
+                    <span className="font-numbers font-black text-white text-sm">0h - 72h</span>
+                  </div>
+                </div>
+
+                {/* Regional Breakdown Grid without boxes */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-2 border-t border-emerald-900/40">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">East Delhi</span>
+                    <span className="font-numbers text-sm font-bold text-rose-400">442 AQI</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">North Delhi</span>
+                    <span className="font-numbers text-sm font-bold text-rose-400">418 AQI</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Central Delhi</span>
+                    <span className="font-numbers text-sm font-bold text-amber-300">385 AQI</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">South Delhi</span>
+                    <span className="font-numbers text-sm font-bold text-amber-300">362 AQI</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between">
+                  <p className="text-xs text-[#a7d0bf]">
+                    Interactive GNN spatial convolution with wind transport vectors.
+                  </p>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('map')}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#061d15] text-xs font-bold shrink-0 shadow-sm"
+                  >
+                    Open Spatial Map &rarr;
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
-          {/* 5. FIRMS Stubble Fires */}
+          {/* ======================================================== */}
+          {/* 5. FIRMS Stubble Fires                                   */}
+          {/* ======================================================== */}
           {item.type === 'firms-fires' && (
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between">
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
                 <div>
-                  <span className="text-3xl sm:text-4xl font-black font-numbers text-amber-400">{totalFRP}</span>
-                  <span className="text-xs font-bold text-[#a7d0bf] ml-1">MW Fire Power</span>
+                  <span className="text-2xl sm:text-3xl font-black font-numbers text-amber-400">{totalFRP}</span>
+                  <span className="text-xs font-bold text-[#a7d0bf] ml-1">MW FRP</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-xl sm:text-2xl font-black font-numbers text-white">{fireHotspots.length}</span>
-                  <span className="text-xs font-bold text-[#a7d0bf] ml-1">Hotspots</span>
+                <div className="text-xs text-white">
+                  <strong>{fireHotspots.length}</strong> Satellite Detections
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Punjab: {fireHotspots.filter(f => f.state === 'Punjab').length} • Haryana: {fireHotspots.filter(f => f.state === 'Haryana').length}
                 </div>
               </div>
-              <div className="flex items-center justify-between text-xs pt-1.5 text-white bg-[#061d15] p-2.5 rounded-xl border border-emerald-700/50">
-                <span>Punjab: <strong className="font-numbers font-black text-[#86efac] text-sm">{fireHotspots.filter(f => f.state === 'Punjab').length}</strong></span>
-                <span>Haryana: <strong className="font-numbers font-black text-[#86efac] text-sm">{fireHotspots.filter(f => f.state === 'Haryana').length}</strong></span>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-3xl font-black font-numbers text-amber-400">{totalFRP}</span>
+                    <span className="text-xs font-bold text-[#a7d0bf] ml-1">MW Fire Power</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-black font-numbers text-white">{fireHotspots.length}</span>
+                    <span className="text-xs font-bold text-[#a7d0bf] ml-1">Hotspots</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs py-1 border-t border-emerald-900/60 text-white">
+                  <span>Punjab: <strong className="text-[#86efac]">{fireHotspots.filter(f => f.state === 'Punjab').length}</strong></span>
+                  <span>Haryana: <strong className="text-[#86efac]">{fireHotspots.filter(f => f.state === 'Haryana').length}</strong></span>
+                  <span>ETA: <strong className="text-amber-300">+18h</strong></span>
+                </div>
               </div>
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onNavigateTab('inversion-fire')}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
-              >
-                Track Plume Trajectory &rarr;
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-4xl font-black font-numbers text-amber-400">{totalFRP}</span>
+                    <span className="text-xs font-bold text-[#a7d0bf] ml-1">MW Total Radiative Power</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black font-numbers text-white">{fireHotspots.length}</span>
+                    <span className="text-xs font-bold text-[#a7d0bf] ml-1">Active Clusters</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Sangrur Cluster</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">185 MW</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Patiala Cluster</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">142 MW</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Tarn Taran</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">131 MW</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">NASA FIRMS VIIRS & MODIS Telemetry</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    Track Plume Trajectories &rarr;
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
-          {/* 6. Plume Trajectory Corridor */}
+          {/* ======================================================== */}
+          {/* 6. Plume Trajectory                                      */}
+          {/* ======================================================== */}
           {item.type === 'plume-trajectory' && (
-            <div className="space-y-2">
-              {firePlumes[0] ? (
-                <div>
-                  <div className="flex items-center justify-between text-xs sm:text-sm mb-1.5">
-                    <span className="text-white font-bold">{firePlumes[0].source_name}</span>
-                    <span className="text-amber-400 font-numbers font-black">+{firePlumes[0].eta_delhi_hours}h ETA</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                      <span className="text-[10px] text-[#a7d0bf] block font-bold">Speed</span>
-                      <span className="font-numbers font-black text-white text-sm">{firePlumes[0].current_wind_speed_kmh} km/h</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                      <span className="text-[10px] text-[#a7d0bf] block font-bold">Bearing</span>
-                      <span className="font-numbers font-black text-[#86efac] text-sm">{firePlumes[0].corridor_bearing_deg}° NW</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs sm:text-sm text-[#a7d0bf]">No active fire conduits detected currently.</p>
-              )}
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onNavigateTab('inversion-fire')}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
-              >
-                View Plume Vectors &rarr;
-              </button>
-            </div>
-          )}
-
-          {/* 7. CAMS vs GNN Residual */}
-          {item.type === 'cams-vs-gnn' && (
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between text-xs sm:text-sm">
-                <span className="text-white font-bold">Anand Vihar (+48h)</span>
-                <span className="text-[#86efac] font-numbers font-black text-sm">+68 µg/m³</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60">
-                  <span className="text-rose-300 block text-[10px] font-bold">CAMS Baseline</span>
-                  <span className="text-lg font-numbers font-black text-rose-400 line-through">245</span>
-                  <span className="text-[10px] text-rose-300 font-bold block">Underpredicts</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] block text-[10px] font-bold">GNN Forecast</span>
-                  <span className="text-xl font-numbers font-black text-[#86efac]">313</span>
-                  <span className="text-[10px] text-[#86efac] font-bold block">Calibrated</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onNavigateTab('comparison')}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
-              >
-                Compare Model Curves &rarr;
-              </button>
-            </div>
-          )}
-
-          {/* 8. Track Record Accuracy */}
-          {item.type === 'track-record' && (
-            <div className="space-y-2">
-              <div>
-                <span className="text-4xl sm:text-5xl font-black font-numbers text-[#86efac] tracking-tight">
-                  {stat48?.extreme_event_recall || 92}%
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <span className="text-xs font-bold text-white leading-tight">
+                  {firePlumes[0]?.source_name || 'Upwind Fire Conduits'}
                 </span>
-                <span className="text-xs sm:text-sm font-bold text-white block mt-0.5">Severe Event Recall (+48h)</span>
+                <div>
+                  <span className="text-2xl font-black font-numbers text-amber-400">
+                    +{firePlumes[0]?.eta_delhi_hours || 18}h
+                  </span>
+                  <span className="text-xs text-[#a7d0bf] ml-1">Delhi Arrival</span>
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Speed: <strong className="text-white">{firePlumes[0]?.current_wind_speed_kmh || 14} km/h</strong>
+                </div>
               </div>
-              <div className="text-xs sm:text-sm text-[#a7d0bf] pt-1.5 border-t border-[#134e38]">
-                MAE: <span className="font-numbers font-black text-[#86efac]">{stat48?.gnn_mae || 14.2}</span> vs CAMS <span className="font-numbers font-black text-rose-400">{stat48?.cams_mae || 38.6}</span>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="text-white font-bold">{firePlumes[0]?.source_name || 'Punjab Corridor'}</span>
+                  <span className="text-amber-400 font-numbers font-black">+{firePlumes[0]?.eta_delhi_hours || 18}h ETA</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Speed</span>
+                    <span className="font-numbers font-black text-white text-sm">{firePlumes[0]?.current_wind_speed_kmh || 14} km/h</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Bearing</span>
+                    <span className="font-numbers font-black text-[#86efac] text-sm">{firePlumes[0]?.corridor_bearing_deg || 315}° NW</span>
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                data-no-drag
-                onClick={() => onNavigateTab('track-record')}
-                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold mt-auto text-left"
-              >
-                Inspect Audit Log &rarr;
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-base font-bold text-white block">{firePlumes[0]?.source_name || 'Sangrur-Patiala Corridor'}</span>
+                    <span className="text-xs text-[#a7d0bf]">Biomass plume advection corridor</span>
+                  </div>
+                  <span className="text-amber-400 font-numbers font-black text-lg">+{firePlumes[0]?.eta_delhi_hours || 18}h ETA</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Wind Speed</span>
+                    <span className="font-mono font-bold text-white text-sm">{firePlumes[0]?.current_wind_speed_kmh || 14} km/h</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Corridor Vector</span>
+                    <span className="font-mono font-bold text-[#86efac] text-sm">{firePlumes[0]?.corridor_bearing_deg || 315}° NW</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Plume Density</span>
+                    <span className="font-mono font-bold text-rose-400 text-sm">Heavy</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">Receptor zone: Anand Vihar / North-East Delhi basin</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    View Plume Map &rarr;
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
-          {/* 9. High-Risk Hotspot Stations */}
+          {/* ======================================================== */}
+          {/* 7. CAMS vs GNN Residual                                  */}
+          {/* ======================================================== */}
+          {item.type === 'cams-vs-gnn' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <span className="text-xs font-bold text-white">Anand Vihar (+48h)</span>
+                <div>
+                  <span className="text-2xl font-black font-numbers text-[#86efac]">+68 µg/m³</span>
+                  <span className="text-xs text-[#a7d0bf] block">GNN Residual Delta</span>
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  CAMS 245 &rarr; <strong className="text-white">GNN 313</strong>
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-baseline justify-between text-xs sm:text-sm">
+                  <span className="text-white font-bold">Anand Vihar (+48h)</span>
+                  <span className="text-[#86efac] font-numbers font-black text-sm">+68 µg/m³ Residual</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-rose-300 block text-[10px] font-bold uppercase tracking-wider">CAMS Baseline</span>
+                    <span className="text-base font-numbers font-black text-rose-400 line-through">245</span>
+                    <span className="text-[10px] text-rose-300 block">Underpredicts</span>
+                  </div>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase tracking-wider">GNN Forecast</span>
+                    <span className="text-base font-numbers font-black text-[#86efac]">313</span>
+                    <span className="text-[10px] text-[#86efac] block font-bold">Calibrated</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-base font-bold text-white block">GNN Physics-Residual Calibration</span>
+                    <span className="text-xs text-[#a7d0bf]">Correcting ECMWF/CAMS boundary layer collapse error</span>
+                  </div>
+                  <span className="text-[#86efac] font-numbers font-black text-lg">+68 µg/m³</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Anand Vihar</span>
+                    <span className="font-mono font-bold text-rose-400 line-through text-xs">245</span>
+                    <span className="font-mono font-bold text-[#86efac] text-xs ml-1.5">&rarr; 313</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Wazirpur</span>
+                    <span className="font-mono font-bold text-rose-400 line-through text-xs">210</span>
+                    <span className="font-mono font-bold text-[#86efac] text-xs ml-1.5">&rarr; 282</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Punjabi Bagh</span>
+                    <span className="font-mono font-bold text-rose-400 line-through text-xs">195</span>
+                    <span className="font-mono font-bold text-[#86efac] text-xs ml-1.5">&rarr; 250</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">Resolves underprediction during calm night hours.</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('comparison')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    Compare Curves &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 8. Track Record Accuracy                                 */}
+          {/* ======================================================== */}
+          {item.type === 'track-record' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="text-3xl font-black font-numbers text-[#86efac]">
+                    {stat48?.extreme_event_recall || 92}%
+                  </span>
+                  <span className="text-xs font-bold text-white block">Severe Event Recall</span>
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  MAE: <strong className="text-white font-mono">{stat48?.gnn_mae || 14.2} µg/m³</strong>
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-3xl sm:text-4xl font-black font-numbers text-[#86efac]">
+                      {stat48?.extreme_event_recall || 92}%
+                    </span>
+                    <span className="text-xs font-bold text-white block">Severe Event Recall (+48h)</span>
+                  </div>
+                  <div className="text-right text-xs">
+                    <span className="text-[#a7d0bf] block">GNN MAE</span>
+                    <span className="font-numbers font-black text-white text-base">±{stat48?.gnn_mae || 14.2}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-[#a7d0bf] pt-1 border-t border-emerald-900/60 flex justify-between">
+                  <span>CAMS Baseline MAE: <strong>{stat48?.cams_mae || 38.6}</strong></span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('track-record')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    Audit Log &rarr;
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-4xl font-black font-numbers text-[#86efac]">
+                      {stat48?.extreme_event_recall || 92}%
+                    </span>
+                    <span className="text-sm font-bold text-white block">Empirical Severe Event Recall (+48h)</span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700 text-xs font-bold font-mono">
+                    CPCB Verified
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">PM2.5 MAE</span>
+                    <span className="font-mono font-bold text-[#86efac] text-sm">±14.2 µg/m³</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">AQI Band Acc.</span>
+                    <span className="font-mono font-bold text-white text-sm">88.7%</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Pearson R²</span>
+                    <span className="font-mono font-bold text-white text-sm">0.86</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">Audited against 56 ground stations over 3 years.</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('track-record')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    View Historical Verification &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 9. High-Risk Hotspot Stations                            */}
+          {/* ======================================================== */}
           {item.type === 'high-risk-stations' && (
-            <div className="space-y-2">
-              <div className="space-y-1.5">
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="text-xs text-[#a7d0bf] block uppercase font-bold">Top Hotspot</span>
+                  <span className="text-base font-bold text-white block">Anand Vihar</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-numbers text-2xl font-black text-rose-400">442</span>
+                  <span className="text-xs text-rose-300 font-bold">Severe Band</span>
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Driver: Stubble Inflow + Inversion
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="divide-y divide-emerald-800/30">
                 {[
                   { name: 'Anand Vihar', aqi: 442, change: '+45' },
                   { name: 'Wazirpur', aqi: 418, change: '+38' },
@@ -692,219 +1294,545 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                     key={i} 
                     data-no-drag
                     onClick={() => onSelectStation('dl-anand-vihar')}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#061d15] hover:bg-[#0e3d2c] border border-emerald-700/50 cursor-pointer transition-colors"
+                    className="flex items-center justify-between py-1.5 px-1 hover:bg-[#0e3d2c]/40 cursor-pointer transition-colors rounded-lg"
                   >
-                    <span className="text-xs sm:text-sm font-bold text-white">{st.name}</span>
+                    <span className="text-xs font-bold text-white">{st.name}</span>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="font-numbers font-black text-rose-400 text-sm sm:text-base">{st.aqi} AQI</span>
-                      <span className="font-numbers font-black text-amber-400 text-xs">({st.change})</span>
+                      <span className="font-numbers font-black text-rose-400 text-sm">{st.aqi} AQI</span>
+                      <span className="font-numbers font-bold text-amber-400 text-xs">({st.change})</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-[#a7d0bf] text-right">
-                Click station to inspect details
-              </p>
-            </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="divide-y divide-emerald-800/30">
+                  {[
+                    { name: 'Anand Vihar', aqi: 442, zone: 'East Delhi', driver: 'Biomass Plume', change: '+45' },
+                    { name: 'Wazirpur', aqi: 418, zone: 'North-West', driver: 'Industrial NOx', change: '+38' },
+                    { name: 'Punjabi Bagh', aqi: 395, zone: 'West Delhi', driver: 'Vehicular Congestion', change: '+29' },
+                    { name: 'Bawana', aqi: 388, zone: 'North Delhi', driver: 'Low Dispersion', change: '+31' },
+                  ].map((st, i) => (
+                    <div 
+                      key={i} 
+                      data-no-drag
+                      onClick={() => onSelectStation('dl-anand-vihar')}
+                      className="flex items-center justify-between py-1.5 px-1 hover:bg-[#0e3d2c]/40 cursor-pointer transition-colors rounded-lg"
+                    >
+                      <div>
+                        <span className="text-xs font-bold text-white block">{st.name}</span>
+                        <span className="text-[10px] text-[#a7d0bf]">{st.zone} • {st.driver}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-numbers font-black text-rose-400 text-base">{st.aqi} AQI</span>
+                        <span className="font-numbers font-bold text-amber-400 text-xs">({st.change})</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#a7d0bf] text-right pt-1 border-t border-emerald-900/60">
+                  Click any hotspot to open station sensor telemetry drawer
+                </p>
+              </div>
+            )
           )}
 
-          {/* 10. System Freshness */}
+          {/* ======================================================== */}
+          {/* 10. System Freshness                                     */}
+          {/* ======================================================== */}
           {item.type === 'system-freshness' && (
-            <div className="space-y-2">
-              <div className="space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] font-medium">CPCB CAAQMS</span>
-                  <span className="text-[#86efac] font-mono font-black">Online</span>
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="text-xl font-black font-numbers text-[#86efac]">6 / 6</span>
+                  <span className="text-xs text-white block font-bold">Feeds Online</span>
                 </div>
-                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] font-medium">NASA FIRMS</span>
-                  <span className="text-[#86efac] font-mono font-black">Hourly Poll</span>
+                <div className="text-xs text-[#a7d0bf]">
+                  CAAQMS: <strong className="text-white">15m latency</strong>
                 </div>
-                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
-                  <span className="text-[#a7d0bf] font-medium">CAMS Met</span>
-                  <span className="text-white font-mono font-black">Synchronized</span>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Sync: <strong className="text-[#86efac]">Active</strong>
                 </div>
               </div>
-              <p className="text-xs text-[#a7d0bf] pt-1 border-t border-[#134e38]">
-                All telemetry feeds validated.
-              </p>
-            </div>
+            ) : size === 'wide' ? (
+              <div className="divide-y divide-emerald-800/30 text-xs">
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-[#a7d0bf] font-medium">CPCB CAAQMS</span>
+                  <span className="text-[#86efac] font-mono font-bold">Online (15m)</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-[#a7d0bf] font-medium">NASA FIRMS Fires</span>
+                  <span className="text-[#86efac] font-mono font-bold">Hourly Poll</span>
+                </div>
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-[#a7d0bf] font-medium">CAMS Global Chemistry</span>
+                  <span className="text-white font-mono font-bold">Synchronized</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="divide-y divide-emerald-800/30 text-xs">
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-[#a7d0bf] font-medium">CPCB Ground CAAQMS (56 Nodes)</span>
+                    <span className="text-[#86efac] font-mono font-bold">15m Poll</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-[#a7d0bf] font-medium">NASA FIRMS VIIRS/MODIS Fire Satellites</span>
+                    <span className="text-[#86efac] font-mono font-bold">Hourly Cycle</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-[#a7d0bf] font-medium">ECMWF / CAMS Atmospheric Chemistry</span>
+                    <span className="text-white font-mono font-bold">Day-3 Ingest</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-[#a7d0bf] font-medium">Open-Meteo High-Res Numerical Weather</span>
+                    <span className="text-[#86efac] font-mono font-bold">Synchronized</span>
+                  </div>
+                </div>
+                <p className="text-xs text-[#a7d0bf] pt-1 border-t border-emerald-900/60">
+                  All 6 ingestion pipelines healthy and validated.
+                </p>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 11. Delhi Mean AQI Gauge                                 */}
+          {/* ======================================================== */}
+          {item.type === 'delhi-aqi-gauge' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="text-3xl font-black font-numbers text-rose-400 leading-none">
+                    348
+                  </span>
+                  <span className="text-xs text-[#a7d0bf] ml-1 font-bold">AQI Mean</span>
+                </div>
+                <div className="text-xs font-bold text-amber-300">
+                  Very Poor • GRAP Stage III
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Peak: <strong className="text-rose-400">442</strong> (Anand Vihar)
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-black font-numbers text-rose-400">348</span>
+                    <span className="text-xs text-[#a7d0bf] font-bold">Basin Average AQI</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-700/50">
+                    GRAP III
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">PM2.5</span>
+                    <span className="font-numbers font-black text-rose-300 text-sm">218 µg/m³</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">PM10</span>
+                    <span className="font-numbers font-black text-amber-300 text-sm">342 µg/m³</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">Hotspot</span>
+                    <span className="font-numbers font-black text-white text-sm">Anand Vihar</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-black font-numbers text-rose-400">348</span>
+                      <span className="text-xs text-[#a7d0bf] font-bold">Delhi-NCR Composite AQI</span>
+                    </div>
+                    <span className="text-xs font-bold text-amber-300">Very Poor Air Quality Category</span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-rose-950 text-rose-300 border border-rose-700 text-xs font-bold font-mono">
+                    GRAP Stage III Active
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">PM2.5 Mean</span>
+                    <span className="font-mono font-bold text-rose-400 text-sm">218 µg/m³</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">PM10 Mean</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">342 µg/m³</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Max Station</span>
+                    <span className="font-mono font-bold text-rose-500 text-sm">442 (Severe)</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">56 CAAQMS Continuous Ingestion</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('map')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    View Station Readings &rarr;
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+
+          {/* ======================================================== */}
+          {/* 12. Surface Meteorology                                  */}
+          {/* ======================================================== */}
+          {item.type === 'meteo-surface' && (
+            size === 'sm' ? (
+              <div className="flex flex-col justify-between h-full space-y-1">
+                <div>
+                  <span className="text-2xl sm:text-3xl font-black font-numbers text-white leading-none">
+                    1.1
+                  </span>
+                  <span className="text-xs text-[#a7d0bf] ml-1 font-mono">m/s</span>
+                  <span className="text-xs text-[#86efac] ml-2 font-bold font-mono">315° NW</span>
+                </div>
+                <div className="text-xs font-bold text-amber-300">
+                  Calm Surface Boundary
+                </div>
+                <div className="text-[11px] text-[#a7d0bf]">
+                  Temp: <strong className="text-white font-mono">23°C</strong> • RH: <strong className="text-white font-mono">68%</strong>
+                </div>
+              </div>
+            ) : size === 'wide' ? (
+              <div className="flex flex-col justify-between h-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black font-numbers text-white">1.1 m/s</span>
+                    <span className="text-xs text-[#86efac] font-mono font-bold">315° NW Vector</span>
+                  </div>
+                  <span className="text-xs font-bold text-amber-300">Calm Boundary</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">PBLH</span>
+                    <span className="font-numbers font-black text-white text-sm">{currentInv?.pblh || 320} m</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">Temp</span>
+                    <span className="font-numbers font-black text-white text-sm">23°C</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">Humidity</span>
+                    <span className="font-numbers font-black text-white text-sm">68%</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold">Risk</span>
+                    <span className="font-numbers font-black text-amber-400 text-sm">Entrapment</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-base font-bold text-white block">Surface Micrometeorology</span>
+                    <span className="text-xs text-[#a7d0bf]">Local boundary layer dynamics & dispersion vectors</span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#061d15] text-[#86efac] border border-emerald-700 text-xs font-mono font-bold">
+                    315° NW Vector
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Surface Wind</span>
+                    <span className="font-mono font-bold text-white text-sm">1.1 m/s</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Boundary Height</span>
+                    <span className="font-mono font-bold text-white text-sm">{currentInv?.pblh || 320} m</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Temperature</span>
+                    <span className="font-mono font-bold text-white text-sm">23.4°C</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#a7d0bf] block uppercase font-bold tracking-wider">Relative Humidity</span>
+                    <span className="font-mono font-bold text-amber-300 text-sm">68%</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between text-xs">
+                  <span className="text-[#a7d0bf]">Advective transport speed: ~14 km/h corridor.</span>
+                  <button
+                    type="button"
+                    data-no-drag
+                    onClick={() => onNavigateTab('inversion-fire')}
+                    className="text-[#86efac] hover:text-white font-bold"
+                  >
+                    View Wind Rose &rarr;
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </div>
 
         {/* Corner Resize Handle */}
-        <ResizeCornerHandle
-          currentSize={item.size}
-          onResize={(newSize) => setWidgetSize(item.id, newSize)}
-        />
+        {!isPreview && (
+          <ResizeCornerHandle
+            currentSize={item.size}
+            onLiveResize={(newSize) => setWidgetSizeLive(item.id, newSize)}
+            onCommit={commitWidgetSize}
+          />
+        )}
       </div>
     );
   };
 
   return (
     <div className="space-y-5 font-sans">
-      {/* Top Toolbar in Green & White with Green Stroke */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-        {/* Box 1: Title Box */}
-        <div className="md:col-span-2 p-5 rounded-2xl bg-[#0a2e21] border-2 border-emerald-600/40 shadow-lg text-white flex flex-col justify-center">
-          <h2 className="font-heading text-2xl sm:text-3xl text-white">Central Telemetry Overview</h2>
-          <p className="text-xs sm:text-sm text-[#a7d0bf] mt-1">
-            Drag by header or use arrows to rearrange. Click size pills ([sm] [wide] [lg]) or corner handle to resize.
-          </p>
+      {/* Top Toolbar: Clean, Unboxed Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-emerald-800/40">
+        <div>
+          <h2 className="font-heading font-archivo text-2xl sm:text-3xl text-white">Central Telemetry Overview</h2>
         </div>
 
-        {/* Box 2: Capacity & Presets Box */}
-        <div className="p-5 rounded-2xl bg-[#0a2e21] border-2 border-emerald-600/40 shadow-lg text-white flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-[#a7d0bf]">Board Capacity</span>
-            <span className="font-numbers font-black text-base text-white">{widgets.length} / {MAX_WIDGETS}</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-2.5">
-            <span className="text-xs text-[#a7d0bf] font-bold mr-1">Presets:</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-[#a7d0bf]">
+            <span className="font-bold text-[11px] text-[#a7d0bf]/80 uppercase tracking-wider mr-1">Presets:</span>
+
+            {/* Balanced Preset: Icon expands on hover to reveal name */}
             <button
               type="button"
               onClick={() => applyPreset('balanced')}
-              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
+              title="Balanced Preset"
+              className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0a2e21] hover:bg-[#124735] border border-emerald-700/50 hover:border-emerald-500 text-emerald-200 hover:text-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm"
             >
-              Balanced
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0 text-emerald-400 group-hover:text-emerald-300 transition-colors" />
+              <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-300 ease-out whitespace-nowrap text-xs font-bold font-sans overflow-hidden">
+                Balanced
+              </span>
             </button>
+
+            {/* Meteo Preset: Icon expands on hover to reveal name */}
             <button
               type="button"
               onClick={() => applyPreset('meteo')}
-              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
+              title="Meteorology Preset"
+              className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0a2e21] hover:bg-[#124735] border border-emerald-700/50 hover:border-emerald-500 text-emerald-200 hover:text-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm"
             >
-              Meteo
+              <Wind className="w-3.5 h-3.5 shrink-0 text-sky-400 group-hover:text-sky-300 transition-colors" />
+              <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-300 ease-out whitespace-nowrap text-xs font-bold font-sans overflow-hidden">
+                Meteo
+              </span>
             </button>
+
+            {/* Action Preset: Icon expands on hover to reveal name */}
             <button
               type="button"
               onClick={() => applyPreset('taskforce')}
-              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
+              title="Action Preset"
+              className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0a2e21] hover:bg-[#124735] border border-emerald-700/50 hover:border-emerald-500 text-emerald-200 hover:text-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm"
             >
-              Action
+              <Zap className="w-3.5 h-3.5 shrink-0 text-amber-400 group-hover:text-amber-300 transition-colors" />
+              <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-300 ease-out whitespace-nowrap text-xs font-bold font-sans overflow-hidden">
+                Action
+              </span>
             </button>
           </div>
-        </div>
 
-        {/* Box 3: Manage Widgets Button Box */}
-        <button
-          type="button"
-          onClick={() => setIsOrganizerOpen(true)}
-          className="p-5 rounded-2xl bg-white hover:bg-[#e6f4ea] text-[#072118] border-2 border-white font-bold text-sm sm:text-base flex flex-col justify-center items-center gap-1 transition-all shadow-md cursor-pointer"
-        >
-          <span className="font-black">Manage Widgets</span>
-          <span className="text-xs font-semibold text-[#0b3b2a]">
-            {MAX_WIDGETS - widgets.length} slots available
-          </span>
-        </button>
+          {/* Widget Market Pencil Icon Button */}
+          <button
+            type="button"
+            onClick={() => setIsOrganizerOpen(true)}
+            title="Widget Market"
+            className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center border border-emerald-400/40"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Widget Catalog Modal / Drawer */}
+      {/* Widget Catalog Modal / Drawer: Visual Live Widget Gallery */}
       {isOrganizerOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0a2e21] border-2 border-emerald-600/50 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 font-sans text-white">
-            {/* Catalog Header */}
-            <div className="p-5 border-b border-[#134e38] bg-[#072118] flex items-center justify-between">
-              <div>
-                <h3 className="font-heading text-2xl text-white">Manage Dashboard Widgets</h3>
-                <p className="text-xs sm:text-sm text-[#a7d0bf] mt-1">
-                  Choose widgets for your workspace. Maximum {MAX_WIDGETS} widgets allowed on the board.
-                </p>
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-[#072118] border-2 border-emerald-600/50 rounded-3xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 font-sans text-white">
+            {/* Catalog Header with Tabs & Capacity Gauge */}
+            <div className="p-4 sm:p-5 border-b border-[#134e38] bg-[#051a13] flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-heading font-archivo text-xl sm:text-2xl text-white">
+                    Widget Market
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                  {/* Board Capacity Pill */}
+                  <div className="flex items-center gap-2.5 bg-[#061d15] px-3.5 py-1.5 rounded-xl border border-emerald-600/50 text-xs">
+                    <span className="text-[#a7d0bf] font-bold">Active:</span>
+                    <span className="font-numbers font-black text-emerald-400">
+                      {widgets.length} / {MAX_WIDGETS}
+                    </span>
+                    <div className="w-12 h-2 bg-emerald-950 rounded-full overflow-hidden flex border border-emerald-800">
+                      <div 
+                        className="h-full bg-emerald-400 transition-all duration-300"
+                        style={{ width: `${Math.min(100, (widgets.length / MAX_WIDGETS) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsOrganizerOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-[#0e3d2c] hover:bg-[#124735] text-white font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="px-3 py-1.5 rounded-xl text-xs font-numbers font-black bg-[#061d15] border border-emerald-600/50 text-white">
-                  {widgets.length} / {MAX_WIDGETS}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => setIsOrganizerOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-[#072118] font-bold text-xs transition-colors"
-                >
-                  Close
-                </button>
+              {/* Category Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
+                {[
+                  { id: 'all', label: `All Widgets (${AVAILABLE_WIDGET_CATALOG.length})` },
+                  { id: 'Alerts', label: 'Alerts & Risk' },
+                  { id: 'Inversion & Fire', label: 'Inversion & Fire' },
+                  { id: 'Spatial Map', label: 'Spatial Map' },
+                  { id: 'Model Comparison', label: 'Model AI' },
+                  { id: 'Track Record', label: 'Audit Record' },
+                  { id: 'System Status', label: 'Pipeline Health' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setCatalogFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                      catalogFilter === f.id
+                        ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/50'
+                        : 'bg-[#0a2e21] text-[#a7d0bf] hover:text-white hover:bg-[#0e3d2c]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Capacity Alert if full */}
             {widgets.length >= MAX_WIDGETS && (
-              <div className="bg-amber-950/80 border-b border-amber-700/60 px-5 py-2.5 text-xs text-amber-200 font-bold">
-                Maximum capacity reached ({MAX_WIDGETS} / {MAX_WIDGETS} widgets). Remove an active widget before adding another.
+              <div className="bg-amber-950/80 border-b border-amber-700/60 px-5 py-2.5 text-xs text-amber-200 font-bold flex items-center justify-between gap-2">
+                <span>Maximum capacity reached ({MAX_WIDGETS} / {MAX_WIDGETS} widgets). Remove any active widget to make room for another.</span>
+                <span className="font-mono text-amber-300 shrink-0">BOARD FULL</span>
               </div>
             )}
 
-            {/* Catalog Grid */}
-            <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-[#061d15]">
-              {AVAILABLE_WIDGET_CATALOG.map((cat) => {
-                const activeInstance = widgets.find(w => w.type === cat.type);
-                const isAdded = Boolean(activeInstance);
-                const isFull = widgets.length >= MAX_WIDGETS;
+            {/* Scrollable Live Widget Gallery Grid */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#04160f] space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 auto-flow-dense">
+                {AVAILABLE_WIDGET_CATALOG
+                  .filter(cat => catalogFilter === 'all' || cat.tab === catalogFilter)
+                  .map((cat) => {
+                    const activeInstance = widgets.find(w => w.type === cat.type);
+                    const isAdded = Boolean(activeInstance);
+                    const isFull = widgets.length >= MAX_WIDGETS;
+                    const isWide = cat.defaultSize === 'wide';
 
-                return (
-                  <div
-                    key={cat.type}
-                    className={`p-4 rounded-xl border-2 flex flex-col justify-between gap-3 transition-colors ${
-                      isAdded
-                        ? 'bg-[#0e3d2c] border-emerald-400 shadow-md'
-                        : 'bg-[#0a2e21] border-emerald-700/50 hover:border-emerald-500'
-                    }`}
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs sm:text-sm text-white">
-                          {cat.label}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-[#86efac] font-bold uppercase">
-                          {cat.tab}
-                        </span>
+                    const previewWidget: CustomWidget = activeInstance || {
+                      id: `catalog-preview-${cat.type}`,
+                      type: cat.type,
+                      size: cat.defaultSize,
+                      label: cat.label,
+                    };
+
+                    return (
+                      <div
+                        key={cat.type}
+                        onClick={() => {
+                          if (isAdded) {
+                            removeWidget(activeInstance!.id);
+                          } else if (!isFull) {
+                            addWidget(cat);
+                          }
+                        }}
+                        className={`group flex flex-col justify-between rounded-2xl p-3 sm:p-3.5 border transition-all duration-200 cursor-pointer select-none relative ${
+                          isWide ? 'sm:col-span-2' : 'col-span-1'
+                        } ${
+                          isAdded
+                            ? 'bg-[#093526]/85 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.18)] ring-1 ring-emerald-400/50'
+                            : 'bg-[#07241a]/55 border-emerald-800/40 hover:border-emerald-600/70 hover:bg-[#093526]/40 shadow-md'
+                        }`}
+                      >
+                        {/* Card Header Metadata */}
+                        <div className="flex items-center justify-between text-xs mb-2 gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase tracking-wider truncate">
+                              • {cat.tab}
+                            </span>
+                            <span className="text-[10px] text-[#a7d0bf] font-mono px-1.5 py-0.5 rounded bg-[#061d15] border border-emerald-800/60 shrink-0">
+                              {isWide ? '2×1 Wide' : '1×1 Standard'}
+                            </span>
+                          </div>
+
+                          {isAdded ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-500/60 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Active on Board
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-neutral-400 bg-neutral-900/60 px-2 py-0.5 rounded-full border border-neutral-700/50 shrink-0">
+                              + Available
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Live Widget Form Preview */}
+                        <div className="w-full h-[145px] pointer-events-none rounded-xl overflow-hidden shadow-inner my-1">
+                          {renderWidgetContent(previewWidget, cat.defaultSize, true)}
+                        </div>
+
+                        {/* Card Footer: Summary & Action Button */}
+                        <div className="mt-2.5 pt-2 border-t border-emerald-900/50 flex items-center justify-between gap-3">
+                          <p className="text-xs text-[#a7d0bf] line-clamp-1 flex-1 leading-snug">
+                            {cat.description}
+                          </p>
+
+                          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {isAdded ? (
+                              <button
+                                type="button"
+                                onClick={() => removeWidget(activeInstance!.id)}
+                                className="px-3.5 py-1.5 rounded-xl bg-rose-950/90 hover:bg-rose-900 border border-rose-700 text-rose-200 text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1"
+                              >
+                                <span>Remove</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isFull}
+                                onClick={() => addWidget(cat)}
+                                className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer flex items-center gap-1 ${
+                                  isFull
+                                    ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+                                    : 'bg-emerald-500 hover:bg-emerald-400 text-[#061d15] hover:scale-105 active:scale-95'
+                                }`}
+                              >
+                                <span>{isFull ? 'Limit Reached' : '+ Add Widget'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-[#a7d0bf] leading-relaxed">
-                        {cat.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2.5 border-t border-[#134e38]">
-                      <span className="text-xs text-[#a7d0bf] font-mono font-bold uppercase">
-                        Default {cat.defaultSize}
-                      </span>
-
-                      {isAdded ? (
-                        <button
-                          type="button"
-                          onClick={() => removeWidget(activeInstance!.id)}
-                          className="px-3.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-700 text-rose-200 text-xs font-bold transition-colors"
-                        >
-                          Remove
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={isFull}
-                          onClick={() => addWidget(cat)}
-                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                            isFull
-                              ? 'bg-neutral-800 border border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : 'bg-white hover:bg-emerald-100 text-[#072118] shadow-sm font-black'
-                          }`}
-                        >
-                          {isFull ? 'Limit Reached' : 'Add to Board'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+              </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#134e38] bg-[#072118] flex items-center justify-between">
-              <span className="text-xs text-[#a7d0bf]">
-                Tip: Pull bottom-right corner or click size pills ([sm] [wide] [lg]) to resize.
-              </span>
+            <div className="p-4 border-t border-[#134e38] bg-[#051a13] flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setIsOrganizerOpen(false)}
-                className="px-5 py-2 rounded-xl bg-white hover:bg-emerald-100 text-[#072118] font-black text-xs shadow-sm"
+                className="px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#061d15] font-black text-xs shadow-md cursor-pointer shrink-0"
               >
                 Done
               </button>
@@ -914,28 +1842,31 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
       )}
 
       {/* The Draggable Widget Grid */}
-      <div className="min-h-[500px]">
+      <div className="min-h-[440px]">
         <DraggableWidgetGrid
           items={widgets}
           onChange={(newItems) => updateWidgets(newItems as CustomWidget[])}
           renderItem={(item, size) => renderWidgetContent(item as CustomWidget, size)}
           editable={true}
           maxColumns={4}
-          cellSize={240}
-          gap={14}
+          cellSize={190}
+          rowHeight={140}
+          gap={12}
           radius={16}
         />
       </div>
 
-      {/* Add Widget Empty Slot Button */}
+      {/* Add Widget Slot Button (Clean, Non-Boxy) */}
       {widgets.length < MAX_WIDGETS && (
-        <button
-          type="button"
-          onClick={() => setIsOrganizerOpen(true)}
-          className="w-full py-4 border-2 border-dashed border-emerald-600/50 hover:border-emerald-400 rounded-2xl flex items-center justify-center gap-2 text-emerald-200 hover:text-white bg-[#0a2e21]/50 hover:bg-[#0a2e21] transition-all text-xs sm:text-sm font-bold font-sans shadow-sm"
-        >
-          <span>+ Add Widget to Board ({MAX_WIDGETS - widgets.length} of {MAX_WIDGETS} slots remaining)</span>
-        </button>
+        <div className="pt-2 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setIsOrganizerOpen(true)}
+            className="px-5 py-2.5 rounded-xl border border-emerald-600/40 hover:border-emerald-400 text-emerald-300 hover:text-white bg-[#0a2e21]/40 hover:bg-[#0a2e21] transition-all text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm"
+          >
+            <span>+ Add Widget ({MAX_WIDGETS - widgets.length} slots remaining)</span>
+          </button>
+        </div>
       )}
     </div>
   );

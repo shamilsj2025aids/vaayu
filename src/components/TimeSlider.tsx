@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { formatHourLeadTime } from '../utils/formatters';
+"use client";
+
+import React, { useEffect, useRef, useState } from 'react';
+import * as SliderPrimitive from '@radix-ui/react-slider';
+import NumberFlow from '@number-flow/react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TimeSliderProps {
   currentHour: number;
@@ -7,149 +12,183 @@ interface TimeSliderProps {
   maxHours?: number;
 }
 
+const MILESTONES = [0, 12, 24, 36, 48, 60, 72];
+
 export const TimeSlider: React.FC<TimeSliderProps> = ({
   currentHour,
   onHourChange,
   maxHours = 72,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [preview, setPreview] = useState<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (isPlaying) {
       interval = setInterval(() => {
         onHourChange(currentHour >= maxHours ? 0 : currentHour + 1);
-      }, 1200);
+      }, 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [isPlaying, currentHour, maxHours, onHourChange]);
 
-  const handleStepBack = () => {
-    onHourChange(Math.max(0, currentHour - 1));
+  const toPct = (v: number) => Math.max(0, Math.min(100, (v / maxHours) * 100));
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const raw = ((e.clientX - rect.left) / rect.width) * maxHours;
+    setPreview(Math.max(0, Math.min(maxHours, Math.round(raw))));
   };
 
-  const handleStepForward = () => {
-    onHourChange(Math.min(maxHours, currentHour + 1));
-  };
+  const currentPct = toPct(currentHour);
+  const previewPct = preview !== null ? toPct(preview) : null;
 
-  const jumpToHour = (h: number) => {
-    onHourChange(h);
-  };
+  let ghostLeft = 0;
+  let ghostWidth = 0;
+  if (previewPct !== null) {
+    if (previewPct < currentPct) {
+      ghostLeft = previewPct;
+      ghostWidth = currentPct - previewPct;
+    } else if (previewPct > currentPct) {
+      ghostLeft = currentPct;
+      ghostWidth = previewPct - currentPct;
+    }
+  }
 
   const uncertaintyWidth = Math.round(12 + (currentHour / maxHours) * 38);
 
   return (
-    <div className="bg-[#0a2e21] border-2 border-emerald-600/40 rounded-2xl p-3.5 shadow-lg flex flex-col gap-3 text-white">
-      {/* Top row */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-sky-400">schedule</span>
-            <span className="text-xs uppercase tracking-wider font-semibold text-neutral-400">
-              Forecast Horizon:
-            </span>
-            <span className="text-xs font-bold font-mono text-white bg-[#061d15] px-2.5 py-1 rounded-md border border-emerald-700/50 text-white">
-              {formatHourLeadTime(currentHour)}
+    <div className="bg-[#0a2e21] border border-emerald-600/40 rounded-2xl p-5 shadow-lg text-white font-sans space-y-4">
+      {/* Header — label + animated hour + playback & live reset */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-[#a7d0bf] uppercase tracking-wider mb-1">
+            Forecast Horizon
+          </p>
+          <div className="flex items-baseline gap-2.5 flex-wrap">
+            <div className="text-2xl sm:text-3xl font-bold font-numbers tracking-tight text-white flex items-baseline">
+              {currentHour === 0 ? (
+                <span className="text-[#34d399]">Live Now</span>
+              ) : (
+                <>
+                  <span className="text-[#34d399]">+</span>
+                  <NumberFlow value={currentHour} />
+                  <span className="text-sm font-sans font-normal text-emerald-300 ml-0.5">h</span>
+                </>
+              )}
+            </div>
+
+            <span className="text-xs font-mono text-emerald-400/80">
+              (±{uncertaintyWidth} µg/m³ spread)
             </span>
           </div>
-
-          {currentHour > 0 && (
-            <span className="text-xs text-neutral-400 hidden sm:inline font-mono">
-              (+{Math.floor(currentHour / 24)}d {currentHour % 24}h lead)
-            </span>
-          )}
         </div>
 
-        {/* Confidence Range Badge */}
+        {/* Action Buttons: Play/Pause & Replay */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#061d15] border border-emerald-700/50 text-[11px] font-mono text-emerald-200">
-            <span className="text-neutral-400">Uncertainty Margin:</span>
-            <span className={`font-semibold ${currentHour > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
-              ±{uncertaintyWidth} µg/m³
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsPlaying(!isPlaying)}
+            className={`h-9 w-9 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
+              isPlaying
+                ? 'border-amber-500/70 text-amber-300 bg-amber-950/40 hover:bg-amber-900/40'
+                : 'border-emerald-600/50 text-[#a7d0bf] bg-emerald-950/30 hover:text-white hover:border-emerald-400'
+            }`}
+            title={isPlaying ? 'Pause timelapse' : 'Play timelapse'}
+            aria-label={isPlaying ? 'Pause timelapse' : 'Play timelapse'}
+          >
+            {isPlaying ? (
+              <Pause className="w-4 h-4 text-amber-400 fill-amber-400/30" />
+            ) : (
+              <Play className="w-4 h-4 text-emerald-400 fill-emerald-400/30 ml-0.5" />
+            )}
+          </button>
 
-          <div className="hidden lg:flex items-center text-[11px] text-neutral-500 italic">
-            <span>(Interval expands at +48h/72h to prevent false precision)</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsPlaying(false);
+              onHourChange(0);
+            }}
+            disabled={currentHour === 0}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-xl border border-emerald-800/50 text-[#a7d0bf] bg-transparent hover:text-white hover:border-emerald-600 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+            title="Replay (Reset to 0h)"
+            aria-label="Replay (Reset to 0h)"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* Main Slider & Playback Controls */}
-      <div className="flex items-center gap-3">
-        {/* Play/Pause Button */}
-        <button
-          type="button"
-          onClick={() => setIsPlaying(!isPlaying)}
-          className={`p-2 rounded-xl transition-all flex items-center justify-center ${
-            isPlaying 
-              ? 'bg-amber-950/80 text-amber-300 border border-amber-800' 
-              : 'bg-white text-[#072118] hover:bg-emerald-100 shadow-sm font-bold'
-          }`}
-          title={isPlaying ? 'Pause 72h timelapse' : 'Play 72h continuous timelapse'}
+      {/* Slider Track with Interactive Ghost Preview */}
+      <div className="space-y-2 pt-1">
+        <div
+          ref={rootRef}
+          className="relative w-full py-1.5 cursor-pointer"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setPreview(null)}
         >
-          <span className="material-symbols-outlined text-base">
-            {isPlaying ? 'pause' : 'play_arrow'}
-          </span>
-        </button>
-
-        {/* Step Backward */}
-        <button
-          type="button"
-          onClick={handleStepBack}
-          disabled={currentHour === 0}
-          className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-[#061d15] disabled:opacity-30 disabled:hover:bg-transparent"
-          title="Step back 1 hour"
-        >
-          <span className="material-symbols-outlined text-base">chevron_left</span>
-        </button>
-
-        {/* Range Slider Track */}
-        <div className="relative flex-1 flex items-center">
-          <input
-            type="range"
+          <SliderPrimitive.Root
+            value={[currentHour]}
+            onValueChange={(val) => onHourChange(val[0])}
             min={0}
             max={maxHours}
             step={1}
-            value={currentHour}
-            onChange={(e) => onHourChange(Number(e.target.value))}
-            className="w-full h-1.5 bg-[#061d15] border border-emerald-700/50 rounded-lg appearance-none cursor-pointer accent-white focus:outline-none"
-          />
+            className={cn(
+              "relative flex w-full touch-none select-none items-center",
+            )}
+          >
+            <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-[#061d15] border border-emerald-800/40">
+              <SliderPrimitive.Range className="absolute h-full bg-[#34d399]" />
+            </SliderPrimitive.Track>
+
+            <SliderPrimitive.Thumb
+              className="block h-5 w-5 rounded-full border-2 border-[#34d399] bg-[#061d15] shadow-md ring-offset-background transition-transform hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 cursor-grab active:cursor-grabbing z-10"
+              aria-label="Forecast hour"
+            />
+          </SliderPrimitive.Root>
+
+          {/* Interactive Ghost Bar on Hover */}
+          {previewPct !== null && ghostWidth > 0 && (
+            <div
+              className="pointer-events-none absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-emerald-400/30 transition-[left,width] duration-75 z-0"
+              style={{ left: `${ghostLeft}%`, width: `${ghostWidth}%` }}
+            />
+          )}
+
+          {/* Hover Tooltip Pill */}
+          {preview !== null && preview !== currentHour && (
+            <div
+              className="pointer-events-none absolute -top-5 -translate-x-1/2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#061d15] text-[#34d399] border border-emerald-700/60 shadow-md transition-[left] duration-75 z-20"
+              style={{ left: `${previewPct}%` }}
+            >
+              {preview === 0 ? 'Now' : `+${preview}h`}
+            </div>
+          )}
         </div>
 
-        {/* Step Forward */}
-        <button
-          type="button"
-          onClick={handleStepForward}
-          disabled={currentHour === maxHours}
-          className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-[#061d15] disabled:opacity-30 disabled:hover:bg-transparent"
-          title="Step forward 1 hour"
-        >
-          <span className="material-symbols-outlined text-base">chevron_right</span>
-        </button>
-      </div>
-
-      {/* Preset Jump Milestones */}
-      <div className="flex items-center justify-between text-xs pt-1 border-t border-emerald-800/60 font-mono">
-        {[0, 12, 24, 36, 48, 60, 72].map((hour) => {
-          const isSelected = currentHour === hour;
-          return (
-            <button
-              key={hour}
-              type="button"
-              onClick={() => jumpToHour(hour)}
-              className={`px-2 py-0.5 rounded transition-all ${
-                isSelected
-                  ? 'bg-white text-[#072118] font-bold shadow-xs'
-                  : 'text-emerald-200/80 hover:text-white hover:bg-[#061d15]'
-              }`}
-            >
-              {hour === 0 ? 'Now' : `+${hour}h`}
-            </button>
-          );
-        })}
+        {/* Milestone Labels — Clean text without pill boxes */}
+        <div className="flex justify-between text-[11px] font-medium text-[#a7d0bf]/70 select-none font-mono">
+          {MILESTONES.map((val) => {
+            const isSelected = currentHour === val;
+            return (
+              <button
+                key={val}
+                type="button"
+                onClick={() => onHourChange(val)}
+                className={`hover:text-white transition-colors cursor-pointer ${
+                  isSelected ? 'text-[#34d399] font-bold' : ''
+                }`}
+              >
+                {val === 0 ? 'Now' : `+${val}h`}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

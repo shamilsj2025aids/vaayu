@@ -164,4 +164,4 @@ export interface ModelAccuracyStats {
 }
 
 export type ViewMode = 'authority' | 'public';
-export type AuthorityTab = 'home' | 'map' | 'inversion-fire' | 'comparison' | 'track-record' | 'portal';
+export type AuthorityTab = 'home' | 'map' | 'inversion-fire' | 'comparison' | 'track-record';

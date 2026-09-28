@@ -1,5 +1,5 @@
 """
-VAAYU
+AERIS
 Hybrid Physics + Graph Neural Network Forecasting Backend
 Delivering air quality intelligence for Delhi-NCR
 """
@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import math
 
 app = FastAPI(
-    title="VAAYU API",
+    title="AERIS API",
     description="Air Quality Intelligence Network",
     version="2.0.0"
 )
@@ -120,7 +120,7 @@ def get_category(aqi: int) -> str:
 def health_check():
     return {
         "status": "healthy",
-        "service": "VAAYU Physics + GNN Inference Engine",
+        "service": "AERIS Physics + GNN Inference Engine",
         "gnn_model_loaded": True,
         "gnn_version": "v2.4-residual-coupled",
         "cams_baseline_date": datetime.now().strftime("%Y-%m-%d 00:00 UTC")

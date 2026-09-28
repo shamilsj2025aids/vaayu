@@ -73,12 +73,12 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">{station.name}</h3>
+                <h3 className="font-heading font-normal text-lg text-white">{station.name}</h3>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${getAQIBadgeClass(currentCategory)}`}>
                   {currentCategory}
                 </span>
                 {station.isBoundaryNode && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-600/50 font-bold">
                     Synthetic Fire Boundary Node
                   </span>
                 )}
@@ -100,14 +100,14 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Telemetry Summary Cards */}
-        <div className="p-4 sm:px-6 bg-[#072118] border-b border-[#134e38] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-white">
-          <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 shadow-xs text-white">
+        {/* Telemetry Summary - Clean, Unboxed Stats */}
+        <div className="p-4 sm:px-6 bg-[#072118] border-b border-[#134e38] grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-white">
+          <div>
             <div className="text-[#a7d0bf] mb-1 flex items-center justify-between">
-              <span>AQI ({formatHourLeadTime(selectedHour)})</span>
-              <span className="text-[10px] text-[#0b3b2a] font-mono font-bold">P10-P90</span>
+              <span className="uppercase tracking-wider font-bold text-[10px]">AQI ({formatHourLeadTime(selectedHour)})</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">P10-P90</span>
             </div>
-            <div className="text-xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-white">
               {Math.round(currentAQI)}
             </div>
             <div className="text-[11px] text-[#a7d0bf] font-mono mt-0.5">
@@ -115,44 +115,44 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 shadow-xs text-white">
+          <div>
             <div className="text-[#a7d0bf] mb-1 flex items-center justify-between">
-              <span>PM2.5 / CAMS Delta</span>
-              <span className="text-[10px] text-[#16a34a] font-mono font-bold">Residual</span>
+              <span className="uppercase tracking-wider font-bold text-[10px]">PM2.5 / CAMS Delta</span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold">Residual</span>
             </div>
-            <div className="text-xl font-bold font-mono text-white flex items-baseline gap-1.5">
+            <div className="text-2xl font-bold font-mono text-white flex items-baseline gap-1.5">
               <span>{Math.round(currentHourData.pm25.mean)}</span>
-              <span className="text-xs text-[#5c6e64] font-normal">µg/m³</span>
+              <span className="text-xs text-[#a7d0bf] font-normal">µg/m³</span>
             </div>
             <div className="text-[11px] text-[#a7d0bf] font-mono mt-0.5">
               CAMS: <span className="text-white font-bold">{currentHourData.cams_baseline_pm25}</span> | Δ: <span className="text-emerald-400 font-bold">+{currentHourData.gnn_residual_pm25}</span>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 shadow-xs text-white">
+          <div>
             <div className="text-[#a7d0bf] mb-1 flex items-center justify-between">
-              <span>Ventilation (Vc)</span>
-              <span className="material-symbols-outlined text-sm text-[#0b3b2a]">air</span>
+              <span className="uppercase tracking-wider font-bold text-[10px]">Ventilation (Vc)</span>
+              <span className="material-symbols-outlined text-sm text-emerald-400">air</span>
             </div>
-            <div className="text-xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-white">
               {currentHourData.physics.ventilation_coefficient.toLocaleString()}{' '}
-              <span className="text-xs text-[#5c6e64] font-normal">m²/s</span>
+              <span className="text-xs text-[#a7d0bf] font-normal">m²/s</span>
             </div>
             <div className="text-[11px] mt-0.5 truncate">
-              <span className={`px-1.5 py-0.2 rounded font-medium ${ventStatus.badgeColor}`}>
+              <span className={`font-bold ${ventStatus.badgeColor}`}>
                 {ventStatus.label}
               </span>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 shadow-xs text-white">
+          <div>
             <div className="text-[#a7d0bf] mb-1 flex items-center justify-between">
-              <span>Atmospheric Lid</span>
-              <span className="material-symbols-outlined text-sm text-amber-600">layers</span>
+              <span className="uppercase tracking-wider font-bold text-[10px]">Atmospheric Lid</span>
+              <span className="material-symbols-outlined text-sm text-amber-500">layers</span>
             </div>
-            <div className="text-xl font-bold font-mono text-white">
+            <div className="text-2xl font-bold font-mono text-white">
               {currentHourData.weather.boundary_layer_height}m{' '}
-              <span className="text-xs text-[#5c6e64] font-normal">PBLH</span>
+              <span className="text-xs text-[#a7d0bf] font-normal">PBLH</span>
             </div>
             <div className="text-[11px] text-[#a7d0bf] font-mono mt-0.5">
               Wind: {currentHourData.weather.wind_speed} m/s ({degreesToCompass(currentHourData.weather.wind_direction)})
@@ -169,7 +169,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                 type="button"
                 onClick={() => setActiveMetric('pm25')}
                 className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                  activeMetric === 'pm25' ? 'bg-white text-[#072118] font-bold shadow-sm' : 'text-emerald-100 hover:text-white'
+                  activeMetric === 'pm25' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-100 hover:text-white'
                 }`}
               >
                 PM2.5 (Fine Particulates)
@@ -178,7 +178,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                 type="button"
                 onClick={() => setActiveMetric('aqi')}
                 className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                  activeMetric === 'aqi' ? 'bg-white text-[#072118] font-bold shadow-sm' : 'text-emerald-100 hover:text-white'
+                  activeMetric === 'aqi' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-100 hover:text-white'
                 }`}
               >
                 Composite AQI
@@ -187,7 +187,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                 type="button"
                 onClick={() => setActiveMetric('pm10')}
                 className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                  activeMetric === 'pm10' ? 'bg-white text-[#072118] font-bold shadow-sm' : 'text-emerald-100 hover:text-white'
+                  activeMetric === 'pm10' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-100 hover:text-white'
                 }`}
               >
                 PM10
@@ -196,7 +196,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                 type="button"
                 onClick={() => setActiveMetric('no2')}
                 className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                  activeMetric === 'no2' ? 'bg-white text-[#072118] font-bold shadow-sm' : 'text-emerald-100 hover:text-white'
+                  activeMetric === 'no2' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-100 hover:text-white'
                 }`}
               >
                 NO2
@@ -205,7 +205,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                 type="button"
                 onClick={() => setActiveMetric('o3')}
                 className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                  activeMetric === 'o3' ? 'bg-white text-[#072118] font-bold shadow-sm' : 'text-emerald-100 hover:text-white'
+                  activeMetric === 'o3' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-100 hover:text-white'
                 }`}
               >
                 Ozone (O3)
@@ -290,7 +290,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                       stroke="#34d399"
                       strokeWidth={2.5}
                       dot={false}
-                      name="VAAYU GNN Residual Corrected (µg/m³)"
+                      name="AERIS GNN Residual Corrected (µg/m³)"
                     />
                   </>
                 )}
@@ -328,7 +328,7 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
                       stroke="#34d399"
                       strokeWidth={2.5}
                       dot={false}
-                      name="VAAYU GNN Corrected AQI"
+                      name="AERIS GNN Corrected AQI"
                     />
                   </>
                 )}
@@ -369,18 +369,18 @@ export const StationDetailModal: React.FC<StationDetailModalProps> = ({
             </ResponsiveContainer>
           </div>
 
-          {/* CPCB Regulatory GRAP Action Plan */}
-          <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 text-xs space-y-2 text-white">
+          {/* CPCB Regulatory GRAP Action Plan - Unboxed */}
+          <div className="pt-3 border-t border-emerald-800/40 text-xs space-y-1.5 text-white">
             <div className="flex items-center justify-between">
               <span className="font-bold text-white flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
+                <span className="material-symbols-outlined text-sm text-amber-500">warning</span>
                 <span>Statutory GRAP Protocol Required:</span>
               </span>
-              <span className={`px-2 py-0.5 rounded font-mono font-semibold ${grap.badgeColor}`}>
+              <span className={`font-mono font-bold ${grap.badgeColor}`}>
                 {grap.stage}
               </span>
             </div>
-            <p className="text-slate-200 leading-relaxed">
+            <p className="text-slate-300 leading-relaxed">
               {grap.action}
             </p>
           </div>

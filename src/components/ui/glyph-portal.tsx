@@ -35,6 +35,8 @@ export type GlyphPortalProps = {
   style?: GlyphPortalStyle;
   /** Called once per rendered scroll frame, never through React state. */
   onProgress?: (progress: number) => void;
+  /** Called when user clicks enter action. */
+  onEnter?: () => void;
 };
 
 const clamp = (n: number, a = 0, b = 1) => Math.min(b, Math.max(a, n));
@@ -89,7 +91,7 @@ function scrollParent(element: HTMLElement): HTMLElement | null {
 export function GlyphPortal({
   word = "SUBLIME", focusChar, interactive = true, background, front, children, scrollLength = 2.4,
   fontFamily = DEFAULT_FONT, fontWeight = 900, annotations = false,
-  enterLabel = "Enter section", className, style, onProgress,
+  enterLabel = "Enter section", className, style, onProgress, onEnter,
 }: GlyphPortalProps) {
   const uid = `gp-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const clipId = `${uid}-clip`;
@@ -412,11 +414,21 @@ export function GlyphPortal({
         <span data-gp-fallback aria-hidden="true" style={{ fontFamily, fontWeight: weight }}>{text}</span>
         <div data-gp-caption>
           <span data-gp-hint aria-hidden="true">{interactive ? "Scroll to enter." : annotations ? "A passage through type" : ""}</span>
-          <a data-gp-enter href={`#${uid}-content`}>{enterLabel}<span aria-hidden="true">↘</span></a>
+          <button
+            type="button"
+            data-gp-enter
+            onClick={(e) => {
+              e.preventDefault();
+              onEnter?.();
+            }}
+            className="cursor-pointer"
+          >
+            {enterLabel}<span aria-hidden="true">↘</span>
+          </button>
         </div>
       </div>
       <div data-gp-content id={`${uid}-content`} tabIndex={-1}>
-        {children ?? <div><h2 data-gp-default-title>A letter becomes a place.</h2><p data-gp-default-copy>The shape opens onto whatever comes next.</p></div>}
+        {children}
       </div>
     </section>
   );

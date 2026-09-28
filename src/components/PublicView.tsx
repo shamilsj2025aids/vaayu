@@ -75,7 +75,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
       {/* Header & Area Search */}
       <div className="bg-[#0a2e21] p-6 rounded-2xl border-2 border-emerald-600/40 shadow-xl space-y-4 text-white">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <h2 className="font-heading font-normal text-xl text-white flex items-center gap-2">
             <span>Air Quality for You & Your Family</span>
             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#0e3d2c] text-emerald-300 font-bold border border-emerald-600/50">
               Citizen Advisory
@@ -89,7 +89,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
         {/* Search Bar & Quick Area Chips */}
         <div className="space-y-2.5">
           <div className="relative">
-            <span className="material-symbols-outlined text-[#5c6e64] text-lg absolute left-3.5 top-2.5">search</span>
+            <span className="material-symbols-outlined text-[#a7d0bf] text-lg absolute left-3.5 top-2.5">search</span>
             <input
               type="text"
               placeholder="Search your neighborhood (e.g. Anand Vihar, Rohini, Dwarka, Noida, Gurugram)..."
@@ -119,7 +119,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
                 }}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                   selectedStationId === chip.id
-                    ? 'bg-white text-[#072118] shadow-sm font-bold'
+                    ? 'bg-emerald-500 text-[#061d15] shadow-sm font-bold'
                     : 'bg-[#061d15] text-emerald-200 border border-emerald-700/50 hover:bg-[#0e3d2c]'
                 }`}
               >
@@ -132,7 +132,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
           {searchQuery && (
             <div className="bg-[#061d15] border border-emerald-700/60 rounded-xl p-2 max-h-48 overflow-y-auto space-y-1 shadow-lg text-white">
               {filteredStations.length === 0 ? (
-                <div className="text-xs text-[#5c6e64] p-2">No monitoring station found.</div>
+                <div className="text-xs text-[#a7d0bf] p-2">No monitoring station found.</div>
               ) : (
                 filteredStations.map((st) => (
                   <button
@@ -142,10 +142,10 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
                       setSelectedStationId(st.id);
                       setSearchQuery('');
                     }}
-                    className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-[#0c1212] hover:bg-[#f0fdf4] flex items-center justify-between cursor-pointer"
+                    className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-white hover:bg-[#0e3d2c] flex items-center justify-between cursor-pointer"
                   >
-                    <span>{st.name}</span>
-                    <span className="text-[10px] text-[#5c6e64] font-mono">{st.city} ({st.zone})</span>
+                    <span className="font-medium text-white">{st.name}</span>
+                    <span className="text-[10px] text-[#a7d0bf] font-mono">{st.city} ({st.zone})</span>
                   </button>
                 ))
               )}
@@ -201,57 +201,57 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
           </div>
         </div>
 
-        {/* Expandable Exact Numbers */}
+        {/* Expandable Exact Numbers (Unboxed) */}
         {showDetailedNumbers && (
-          <div className="mt-5 pt-4 border-t border-emerald-800/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs animate-in fade-in">
-            <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-              <span className="text-[#a7d0bf] block text-[10px]">PM2.5 (Fine dust)</span>
-              <span className="text-base font-bold font-mono text-white">
-                {Math.round(todayHour.pm25.mean)} µg/m³
+          <div className="mt-5 pt-4 border-t border-emerald-800/60 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs animate-in fade-in">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">PM2.5 (Fine dust)</span>
+              <span className="text-xl font-bold font-mono text-white">
+                {Math.round(todayHour.pm25.mean)} <span className="text-xs text-[#a7d0bf] font-normal font-sans">µg/m³</span>
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-              <span className="text-[#a7d0bf] block text-[10px]">PM10 (Coarse dust)</span>
-              <span className="text-base font-bold font-mono text-white">
-                {Math.round(todayHour.pm10.mean)} µg/m³
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">PM10 (Coarse dust)</span>
+              <span className="text-xl font-bold font-mono text-white">
+                {Math.round(todayHour.pm10.mean)} <span className="text-xs text-[#a7d0bf] font-normal font-sans">µg/m³</span>
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-              <span className="text-[#a7d0bf] block text-[10px]">NO2 (Traffic exhaust)</span>
-              <span className="text-base font-bold font-mono text-white">
-                {Math.round(todayHour.no2.mean)} µg/m³
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">NO2 (Traffic exhaust)</span>
+              <span className="text-xl font-bold font-mono text-white">
+                {Math.round(todayHour.no2.mean)} <span className="text-xs text-[#a7d0bf] font-normal font-sans">µg/m³</span>
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-              <span className="text-[#a7d0bf] block text-[10px]">Ventilation Capacity</span>
-              <span className="text-base font-bold font-mono text-white">
-                {todayHour.physics.ventilation_coefficient.toLocaleString()} m²/s
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Ventilation Capacity</span>
+              <span className="text-xl font-bold font-mono text-white">
+                {todayHour.physics.ventilation_coefficient.toLocaleString()} <span className="text-xs text-[#a7d0bf] font-normal font-sans">m²/s</span>
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* 3-Day Outlook */}
+      {/* 3-Day Outlook (Single Unified Container) */}
       <div className="space-y-3">
-        <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
+        <h3 className="font-heading font-normal text-base text-white flex items-center gap-1.5">
           <span className="material-symbols-outlined text-emerald-400 text-base">calendar_month</span>
           <span>Next 3 Days Outlook: What to Expect</span>
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-emerald-800/50 bg-[#0a2e21] rounded-2xl border border-emerald-600/40 shadow-lg text-white">
           {days.map((day, idx) => {
             const aqiVal = day.hourData.aqi.mean;
             const cat = day.hourData.category;
             return (
               <div 
                 key={idx}
-                className="bg-[#0a2e21] p-5 rounded-2xl border border-emerald-600/40 flex flex-col justify-between space-y-3 shadow-md text-white"
+                className="p-5 flex flex-col justify-between space-y-3 text-white"
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-[#dbe7e1] pb-2 mb-2.5">
+                  <div className="flex items-center justify-between border-b border-emerald-800/40 pb-2 mb-2.5">
                     <span className="font-bold text-white text-xs">{day.label}</span>
-                    <span className="text-[11px] text-[#5c6e64] font-mono">{day.date}</span>
+                    <span className="text-[11px] text-[#a7d0bf] font-mono">{day.date}</span>
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-2">
@@ -271,8 +271,8 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
                   </p>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-[11px] text-slate-200">
-                  <strong className="text-amber-700 block mb-0.5">Recommendation:</strong>
+                <div className="pt-2 border-t border-emerald-800/40 text-[11px] text-slate-200">
+                  <strong className="text-amber-300 font-bold block mb-0.5">Recommendation:</strong>
                   {day.advice}
                 </div>
               </div>
@@ -281,50 +281,50 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
         </div>
       </div>
 
-      {/* Health & Lifestyle Recommendations Layer */}
+      {/* Health & Lifestyle Recommendations Layer (Unboxed Row) */}
       <div className="bg-[#0a2e21] p-6 rounded-2xl border-2 border-emerald-600/40 space-y-4 shadow-xl text-white">
-        <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-rose-600 text-base">favorite</span>
+        <h3 className="font-heading font-normal text-base text-white flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-rose-400 text-base">favorite</span>
           <span>Health & Daily Lifestyle Guidance</span>
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 space-y-1.5 text-white">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-emerald-800/40 gap-4 sm:gap-0 pt-1 text-xs">
+          <div className="sm:px-4 first:sm:pl-0 last:sm:pr-0 space-y-1.5 text-white">
             <span className="font-bold text-white text-xs flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm text-[#0b3b2a]">masks</span>
+              <span className="material-symbols-outlined text-sm text-emerald-400">masks</span>
               <span>Mask Mandatory?</span>
             </span>
-            <p className="text-slate-200">
-              <strong className="text-rose-700">Yes, N95 / FFP2 mandatory</strong> for any transit exceeding 15 minutes outdoors.
+            <p className="text-slate-200 leading-relaxed">
+              <strong className="text-rose-300 font-bold">Yes, N95 / FFP2 mandatory</strong> for any transit exceeding 15 minutes outdoors.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 space-y-1.5 text-white">
+          <div className="sm:px-4 first:sm:pl-0 last:sm:pr-0 pt-3 sm:pt-0 space-y-1.5 text-white">
             <span className="font-bold text-white text-xs flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm text-amber-600">directions_run</span>
+              <span className="material-symbols-outlined text-sm text-amber-400">directions_run</span>
               <span>Outdoor Exercise?</span>
             </span>
-            <p className="text-slate-200">
-              <strong className="text-rose-700">Avoid morning jogs.</strong> Nocturnal inversion concentrates poison near ground until 11 AM.
+            <p className="text-slate-200 leading-relaxed">
+              <strong className="text-rose-300 font-bold">Avoid morning jogs.</strong> Nocturnal inversion concentrates poison near ground until 11 AM.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 space-y-1.5 text-white">
+          <div className="sm:px-4 first:sm:pl-0 last:sm:pr-0 pt-3 sm:pt-0 space-y-1.5 text-white">
             <span className="font-bold text-white text-xs flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm text-[#0b3b2a]">window</span>
+              <span className="material-symbols-outlined text-sm text-sky-400">window</span>
               <span>Windows Open?</span>
             </span>
-            <p className="text-slate-200">
-              <strong className="text-amber-700">Keep windows sealed shut.</strong> Run HEPA air cleaners on medium-high in sleeping quarters.
+            <p className="text-slate-200 leading-relaxed">
+              <strong className="text-amber-300 font-bold">Keep windows sealed shut.</strong> Run HEPA air cleaners on medium-high in sleeping quarters.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 space-y-1.5 text-white">
+          <div className="sm:px-4 first:sm:pl-0 last:sm:pr-0 pt-3 sm:pt-0 space-y-1.5 text-white">
             <span className="font-bold text-white text-xs flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm text-[#16a34a]">family_restroom</span>
+              <span className="material-symbols-outlined text-sm text-emerald-400">family_restroom</span>
               <span>Children & Seniors</span>
             </span>
-            <p className="text-slate-200">
+            <p className="text-slate-200 leading-relaxed">
               Strict indoor stay recommended. Ensure inhalers and bronchodilators are stocked and accessible.
             </p>
           </div>
@@ -335,18 +335,18 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
       <div className="bg-[#0a2e21] p-6 rounded-2xl border-2 border-emerald-600/40 shadow-xl text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
+            <h4 className="font-heading font-normal text-base text-white flex items-center gap-1.5">
               <span className="material-symbols-outlined text-emerald-400 text-base">notifications</span>
               <span>Proactive Citizen Alert Notification</span>
             </h4>
-            <p className="text-xs text-[#5c6e64]">
+            <p className="text-xs text-[#a7d0bf]">
               Get notified automatically if air quality near <strong className="text-white font-bold">{currentForecast.station.name}</strong> is forecast to cross your threshold in the next 3 days.
             </p>
           </div>
 
           <form onSubmit={handleNotifySubmit} className="flex items-center gap-2 w-full sm:w-auto">
             <div className="flex items-center gap-1.5 bg-[#061d15] px-3 py-1.5 rounded-xl border border-emerald-700/60 text-xs">
-              <span className="text-[#5c6e64]">Threshold:</span>
+              <span className="text-[#a7d0bf]">Threshold:</span>
               <input
                 type="number"
                 min={100}
@@ -356,12 +356,12 @@ export const PublicView: React.FC<PublicViewProps> = ({ forecasts }) => {
                 onChange={(e) => setNotifyThreshold(Number(e.target.value))}
                 className="w-16 bg-[#072118] border border-emerald-600/60 rounded px-1.5 py-0.5 text-center font-mono font-bold text-white focus:outline-none focus:border-white"
               />
-              <span className="text-[#5c6e64]">AQI</span>
+              <span className="text-[#a7d0bf]">AQI</span>
             </div>
 
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-white hover:bg-emerald-100 text-[#072118] font-bold text-xs shadow-md transition-all shrink-0 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#061d15] font-bold text-xs shadow-md transition-all shrink-0 cursor-pointer"
             >
               Set Alert
             </button>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert } from '../types';
 import TabsDemo from '@/components/ui/tabs-10';
 import { AgentAvatar } from '@/components/ui/agent-avatar';
+import { Bot, FileText, X } from 'lucide-react';
 
 interface AlertDetailModalProps {
   alert: Alert | null;
@@ -26,61 +27,56 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Title and Mode Tabs */}
-        <div className="px-5 py-4 border-b border-[#134e38] bg-[#072118] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 text-white">
+        <div className="px-5 py-3.5 border-b border-[#134e38] bg-[#072118] flex items-center justify-between gap-3 shrink-0 text-white">
+          {/* Left: Just Aeris with Disco Avatar in the AI Font (VT323) */}
           <div className="flex items-center gap-3">
-            {/* The Researcher Avatar */}
-            <AgentAvatar name="researcher" size={44} pulse showBadge />
-
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-heading text-xl text-white font-bold flex items-center gap-1.5"><span className="font-vaayu text-2xl font-normal tracking-wider">VAAYU</span><span>AI Researcher</span></h2>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-bold">
-                  {alert.grap_stage}
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-[#0e3d2c] text-emerald-300 border border-emerald-600/50 font-mono font-bold">
-                  agent: researcher
-                </span>
-              </div>
-              <p className="text-xs text-[#a7d0bf] mt-0.5 font-sans">
-                {alert.title} • Lead Time: <span className="font-numbers text-amber-400 font-bold">+{alert.lead_time_hours}h</span>
-              </p>
-            </div>
+            <AgentAvatar name="aeris" size={40} pulse showBadge={false} />
+            <span className="font-vt323 text-3xl sm:text-4xl text-white tracking-wider leading-none select-none">
+              Aeris
+            </span>
           </div>
 
-          {/* Tab Switcher: The "Why" vs Chatbot */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Right: Mode Switcher (AI Chatbot & Expanding Notepad Evidence Report) + Close Button */}
+          <div className="flex items-center gap-2">
             <div className="flex items-center bg-[#061d15] border border-emerald-700/60 rounded-xl p-1 text-xs">
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'chat'
-                    ? 'bg-white text-[#072118] shadow-sm font-bold'
-                    : 'text-emerald-100 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-emerald-200 hover:text-white hover:bg-[#0e3d2c]'
                 }`}
               >
-                AI Chatbot Agent
+                <Bot className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="text-xs font-sans">AI Chatbot</span>
               </button>
+
+              {/* Notepad Icon Button: Expands on hover to reveal name (strictly in font-sans, NOT AI font) */}
               <button
                 type="button"
                 onClick={() => setActiveTab('why')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                title="Evidence-Based Report"
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-300 cursor-pointer overflow-hidden ${
                   activeTab === 'why'
-                    ? 'bg-white text-[#072118] shadow-sm font-bold'
-                    : 'text-emerald-100 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/50'
+                    : 'text-emerald-200 hover:text-white hover:bg-[#0e3d2c]'
                 }`}
               >
-                Causal Evidence ("The Why")
+                <FileText className="w-3.5 h-3.5 shrink-0 text-emerald-300 group-hover:text-white transition-colors" />
+                <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 transition-all duration-300 ease-out whitespace-nowrap text-xs font-bold font-sans overflow-hidden">
+                  Evidence Report
+                </span>
               </button>
             </div>
 
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-[#0e3d2c] text-emerald-100 hover:text-white hover:bg-[#14533c] border border-emerald-600/50 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-[#0e3d2c] text-emerald-100 hover:text-white hover:bg-[#14533c] border border-emerald-600/50 transition-colors cursor-pointer flex items-center justify-center"
               title="Close Dialog"
             >
-              <span className="text-base font-bold leading-none px-1">&times;</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -96,10 +92,10 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
 
           {/* TAB 2: ALL THE INFORMATION WITHIN "THE WHY" */}
           {activeTab === 'why' && (
-            <div className="flex-1 overflow-y-auto p-2 space-y-4 text-xs font-sans">
+            <div className="flex-1 overflow-y-auto space-y-4 text-xs font-sans">
               {/* Executive Diagnostic Summary */}
-              <div className="p-4 rounded-xl bg-[#061d15] border border-emerald-700/50 space-y-1.5 text-white">
-                <h3 className="font-bold text-white uppercase tracking-wider text-xs">
+              <div className="space-y-1 pb-3 border-b border-emerald-800/40 text-white">
+                <h3 className="font-bold text-emerald-400 uppercase tracking-wider text-xs">
                   Executive Physical & GNN Residual Explanation
                 </h3>
                 <p className="text-slate-200 leading-relaxed text-xs">
@@ -108,10 +104,10 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               </div>
 
               {/* Coupled Physics Feature Diagnostics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase">PBL Height Drop</span>
-                  <div className="text-xl font-numbers text-rose-600 mt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-2 border-b border-emerald-800/40">
+                <div>
+                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase tracking-wider">PBL Height Drop</span>
+                  <div className="text-2xl font-numbers text-rose-400 font-bold mt-0.5">
                     -{causal_drivers.pblh_drop}m
                   </div>
                   <p className="text-[10px] text-[#a7d0bf] mt-0.5">
@@ -119,9 +115,9 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase">Surface Wind</span>
-                  <div className="text-xl font-numbers text-amber-600 mt-1">
+                <div>
+                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase tracking-wider">Surface Wind</span>
+                  <div className="text-2xl font-numbers text-amber-400 font-bold mt-0.5">
                     {causal_drivers.wind_speed} m/s
                   </div>
                   <p className="text-[10px] text-[#a7d0bf] mt-0.5">
@@ -129,9 +125,9 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase">Inversion Index</span>
-                  <div className="text-xl font-numbers text-emerald-800 mt-1">
+                <div>
+                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase tracking-wider">Inversion Index</span>
+                  <div className="text-2xl font-numbers text-emerald-400 font-bold mt-0.5">
                     {causal_drivers.inversion_index}/100
                   </div>
                   <p className="text-[10px] text-[#a7d0bf] mt-0.5">
@@ -139,9 +135,9 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase">Upwind Fire Flux</span>
-                  <div className="text-xl font-numbers text-orange-600 mt-1">
+                <div>
+                  <span className="text-[#a7d0bf] block text-[10px] font-bold uppercase tracking-wider">Upwind Fire Flux</span>
+                  <div className="text-2xl font-numbers text-orange-400 font-bold mt-0.5">
                     {causal_drivers.fire_influence}/100
                   </div>
                   <p className="text-[10px] text-[#a7d0bf] mt-0.5">
@@ -151,17 +147,17 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               </div>
 
               {/* Chemical & Meteorological Mechanism Breakdown */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-white">Coupled Model Inferences</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                    <span className="font-bold text-emerald-300 block mb-1">Chemical Head:</span>
+              <div className="space-y-2 py-2 border-b border-emerald-800/40">
+                <h4 className="font-bold text-white text-xs uppercase tracking-wider">Coupled Model Inferences</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-bold text-emerald-300 block text-xs mb-1">Chemical Head:</span>
                     <p className="text-slate-200 leading-normal">
                       {causal_drivers.chemical_factor}
                     </p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-[#061d15] border border-emerald-700/50 text-white">
-                    <span className="font-bold text-amber-300 block mb-1">Meteorology Head:</span>
+                  <div>
+                    <span className="font-bold text-amber-300 block text-xs mb-1">Meteorology Head:</span>
                     <p className="text-slate-200 leading-normal">
                       {causal_drivers.meteorological_factor}
                     </p>
@@ -170,15 +166,15 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               </div>
 
               {/* Highest Accumulation Stations */}
-              <div className="p-4 rounded-xl bg-[#f8faf9] border border-[#dbe7e1]">
-                <span className="font-bold text-white block mb-2">
+              <div className="py-2 border-b border-emerald-800/40">
+                <span className="font-bold text-[#a7d0bf] block text-[10px] uppercase tracking-wider mb-2">
                   Focal Entrapment Monitoring Stations (Highest GNN Node Weight):
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {causal_drivers.accumulation_stations.map((st) => (
                     <span 
                       key={st}
-                      className="px-3 py-1 rounded-lg bg-[#0e3d2c] border border-emerald-600/50 text-white font-bold text-xs"
+                      className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] text-emerald-200 text-xs font-mono font-bold"
                     >
                       {st}
                     </span>
@@ -187,11 +183,11 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
               </div>
 
               {/* Actionable Regulatory Mandate */}
-              <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-800 space-y-2 text-rose-100">
-                <h4 className="font-bold text-rose-300">
+              <div className="pt-2 space-y-1.5 text-rose-200">
+                <h4 className="font-bold text-rose-300 text-xs uppercase tracking-wider">
                   Required Pre-emptive Regulatory Interventions:
                 </h4>
-                <ul className="space-y-1.5 text-rose-100 list-disc list-inside">
+                <ul className="space-y-1 text-slate-200 list-disc list-inside">
                   {alert.action_recommendations.map((rec, i) => (
                     <li key={i} className="leading-relaxed">
                       {rec}

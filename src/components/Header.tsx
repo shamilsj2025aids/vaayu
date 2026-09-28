@@ -37,16 +37,16 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Brand & Subtitle */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-2.5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-vaayu text-3xl text-white tracking-wider font-normal">
-                  VAAYU
-                </h1>
-              </div>
-              <p className="text-[11px] text-[#a7d0bf] font-sans font-medium">
-                Air Quality Intelligence
-              </p>
+            <div className="flex items-center gap-2">
+              <img
+                src="/aeris-logo-transparent.png"
+                alt="AERIS"
+                className="h-7 w-auto object-contain"
+              />
             </div>
+            <p className="text-[10px] text-[#a7d0bf] font-sans font-medium uppercase tracking-wider mt-0.5">
+              Air Quality Intelligence
+            </p>
           </div>
         </div>
 
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onTabChange('home')}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeTab === 'home'
-                  ? 'bg-white text-[#072118] shadow-sm font-bold'
+                   ? 'bg-emerald-600 text-white font-bold ring-1 ring-emerald-400/50'
                   : 'text-emerald-100 hover:text-white hover:bg-[#0e3d2c]'
               }`}
             >
@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onTabChange('map')}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeTab === 'map'
-                  ? 'bg-white text-[#072118] shadow-sm font-bold'
+                   ? 'bg-emerald-600 text-white font-bold ring-1 ring-emerald-400/50'
                   : 'text-emerald-100 hover:text-white hover:bg-[#0e3d2c]'
               }`}
             >
@@ -82,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onTabChange('inversion-fire')}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeTab === 'inversion-fire'
-                  ? 'bg-white text-[#072118] shadow-sm font-bold'
+                   ? 'bg-emerald-600 text-white font-bold ring-1 ring-emerald-400/50'
                   : 'text-emerald-100 hover:text-white hover:bg-[#0e3d2c]'
               }`}
             >
@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onTabChange('comparison')}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeTab === 'comparison'
-                  ? 'bg-white text-[#072118] shadow-sm font-bold'
+                   ? 'bg-emerald-600 text-white font-bold ring-1 ring-emerald-400/50'
                   : 'text-emerald-100 hover:text-white hover:bg-[#0e3d2c]'
               }`}
             >
@@ -106,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onTabChange('track-record')}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 activeTab === 'track-record'
-                  ? 'bg-white text-[#072118] shadow-sm font-bold'
+                   ? 'bg-emerald-600 text-white font-bold ring-1 ring-emerald-400/50'
                   : 'text-emerald-100 hover:text-white hover:bg-[#0e3d2c]'
               }`}
             >
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
                 : justRefreshed
                 ? 'bg-emerald-950 border-emerald-800 text-emerald-300'
-                : 'bg-white hover:bg-emerald-100 text-[#072118] border-white font-bold shadow-sm'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-[#061d15] border-emerald-400 font-bold'
             }`}
             title="Trigger fast-cycle live pull of ground sensors and NASA FIRMS fire detections"
           >
@@ -152,7 +152,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 pl-2 border-l border-emerald-800/60">
             <div className="hidden sm:block text-right">
               <div className="text-xs font-semibold text-white leading-none">
-                {user.identifier}
+                {user.identifier.includes('@')
+                    ? user.identifier.split('@')[0].toUpperCase()
+                    : user.identifier}
               </div>
               <div className="text-[10px] text-emerald-300 font-mono mt-0.5">
                 {user.role === 'authority' ? 'CAQM Officer' : 'Public Citizen'}

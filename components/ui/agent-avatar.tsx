@@ -66,10 +66,17 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
   const normalized = name.toLowerCase().trim();
 
   const grid = useMemo(() => {
-    if (normalized === "researcher" || normalized.includes("researcher")) {
+    // If the name is "aeris" or "researcher", return the exact 6x6 pixel disco matrix
+    if (
+      normalized === "researcher" ||
+      normalized.includes("researcher") ||
+      normalized === "aeris" ||
+      normalized.includes("aeris")
+    ) {
       return RESEARCHER_MATRIX_6X6;
     }
 
+    // Otherwise generate deterministically from the name seed
     let seed = hashString(normalized);
     const rng = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -100,6 +107,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
       title={name}
       aria-label={`${name} avatar`}
     >
+      {/* Outer ambient glow if pulse is enabled */}
       {pulse && (
         <span
           className="absolute inset-0 rounded-full bg-[#12e848] opacity-40 blur-md animate-pulse pointer-events-none"
@@ -107,6 +115,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
         />
       )}
 
+      {/* Circular masked 6x6 pixel grid */}
       <div
         className="w-full h-full rounded-full overflow-hidden shadow-md ring-1 ring-black/10 border border-white/20 relative"
         style={{

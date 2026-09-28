@@ -63,6 +63,8 @@ export interface DraggableWidgetGridProps {
 	/** Corner radius of a widget in px. */
 	radius?: number
 	className?: string
+	/** Explicit row height in px. If omitted, cells are square (row height = column width). */
+	rowHeight?: number
 }
 
 const SPANS: { [K in WidgetSize]: { col: number; row: number } } = {
@@ -571,7 +573,7 @@ const Widget = memo(function Widget({
 			aria-describedby={editable ? hintId : undefined}
 			aria-posinset={position}
 			aria-setsize={count}
-			layout="position"
+			layout={true}
 			drag={editable}
 			dragListener={false}
 			dragControls={controls}
@@ -622,14 +624,10 @@ const Widget = memo(function Widget({
 				zIndex: held ? 20 : raised ? 10 : 0,
 			}}>
 			<motion.div
+				layout={true}
 				initial={{ opacity: 0, y: 18, scale: 0.97 }}
 				animate={{ opacity: 1, y: 0, scale: 1 }}
-				transition={{
-					type: 'spring',
-					visualDuration: 0.6,
-					bounce: 0.12,
-					delay,
-				}}
+				transition={SPRING}
 				className={`relative isolate flex h-full w-full flex-col overflow-hidden rounded-[var(--widget-radius)] bg-card text-card-foreground ring-inset transition-shadow duration-300 [clip-path:inset(0_round_var(--widget-radius))] ${
 					landed ? 'ring-2 ring-foreground/40' : 'ring-1 ring-border'
 				}`}>
@@ -653,13 +651,14 @@ export function DraggableWidgetGrid({
 	gap = 12,
 	radius = 24,
 	className = '',
+	rowHeight,
 }: DraggableWidgetGridProps) {
 	const [items, setItems] = useState(() => initialItems ?? DEFAULT_ITEMS)
 	const grid = useRef(null as HTMLDivElement | null)
 	const hintId = useId()
 	const minColumns = Math.min(2, Math.max(1, maxColumns))
 
-	const [metrics, setMetrics] = useState({ unit: 0, columns: 0 })
+	const [metrics, setMetrics] = useState({ unit: 0, columns: 0, rowUnit: rowHeight ?? 0 })
 	useIsoLayoutEffect(() => {
 		const el = grid.current
 		if (!el) return
@@ -671,17 +670,20 @@ export function DraggableWidgetGrid({
 				Math.min(maxColumns, Math.round(width / cellSize)),
 			)
 			const unit = (width - gap * (columns - 1)) / columns
+			const effectiveRowUnit = rowHeight ?? Math.round(unit)
 			setMetrics((was) =>
-				was.columns === columns && Math.abs(was.unit - unit) < 0.5
+				was.columns === columns &&
+				Math.abs(was.unit - unit) < 0.5 &&
+				was.rowUnit === effectiveRowUnit
 					? was
-					: { unit, columns },
+					: { unit, columns, rowUnit: effectiveRowUnit },
 			)
 		}
 		measure()
 		const observer = new ResizeObserver(measure)
 		observer.observe(el)
 		return () => observer.disconnect()
-	}, [maxColumns, minColumns, cellSize, gap])
+	}, [maxColumns, minColumns, cellSize, gap, rowHeight])
 
 	const columns = metrics.columns || Math.max(minColumns, maxColumns)
 	const placements = useMemo(() => layout(items, columns), [items, columns])
@@ -695,7 +697,7 @@ export function DraggableWidgetGrid({
 		latest.current.items = items
 	}, [items])
 
-	useEffect(() => {
+	useIsoLayoutEffect(() => {
 		if (initialItems && !dragging.current) {
 			setItems(initialItems)
 			latest.current.items = initialItems
@@ -711,10 +713,11 @@ export function DraggableWidgetGrid({
 	const toSlot = useCallback(
 		(box: Box): Slot => {
 			const el = grid.current
-			const { unit } = latest.current.metrics
+			const { unit, rowUnit } = latest.current.metrics
+			const effectiveRowUnit = rowUnit || rowHeight || Math.round(unit)
 			const rect = el?.getBoundingClientRect()
 			const colStep = unit + gap
-			const rowStep = Math.round(unit) + gap
+			const rowStep = effectiveRowUnit + gap
 			const left = (rect?.left ?? 0) + box.col * colStep
 			const top = (rect?.top ?? 0) + box.row * rowStep
 			return {
@@ -724,7 +727,7 @@ export function DraggableWidgetGrid({
 				bottom: top + box.h * rowStep - gap,
 			}
 		},
-		[gap],
+		[gap, rowHeight],
 	)
 
 	/* Drag state. React only re-renders on lift, reorder and drop. */
@@ -906,10 +909,12 @@ export function DraggableWidgetGrid({
 					style={{
 						gap,
 						gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-						// Square cells: row height equals column width.
-						gridAutoRows: metrics.unit
-							? `${Math.round(metrics.unit)}px`
-							: `minmax(${cellSize * 0.75}px, auto)`,
+						// Compact rows if rowHeight provided, else square cells: row height equals column width.
+						gridAutoRows: rowHeight
+							? `${rowHeight}px`
+							: metrics.unit
+								? `${Math.round(metrics.unit)}px`
+								: `minmax(${cellSize * 0.75}px, auto)`,
 					}}>
 					{domOrder.current.map((id) => {
 						const item = byId.get(id)

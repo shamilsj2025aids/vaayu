@@ -24,7 +24,6 @@ import {
   CircleStop,
   Loader2,
   Mic,
-  Video,
   Settings,
   Lock,
   Bell,
@@ -206,7 +205,7 @@ interface MessageItem {
 
 function getCausalAnswer(question: string, alert?: Alert | null): string {
   if (!alert) {
-    return "VAAYU AI Causal Agent active. All 56 CPCB telemetry feeds and NASA FIRMS fire radiance streams are synchronized.";
+    return "Aeris AI Causal Agent active. All 56 CPCB telemetry feeds and NASA FIRMS fire radiance streams are synchronized.";
   }
   const lower = question.toLowerCase();
   const { causal_drivers } = alert;
@@ -221,7 +220,7 @@ function getCausalAnswer(question: string, alert?: Alert | null): string {
     return `Statutory CAQM Stage IV Interventions: Prohibit non-electric/non-CNG commercial trucks into Delhi, halt stone crushers and hot-mix plants, deploy round-the-clock mist-cannon wetting along Ring Road, and scale metro frequencies 4-fold.`;
   }
   if (lower.includes('cams') || lower.includes('physics') || lower.includes('gnn') || lower.includes('error')) {
-    return `Numerical Physics vs GNN Residual: Global Eulerian models (CAMS) underpredict Day-2 and Day-3 AQI by ~68 µg/m³ due to coarse 40km grid plume dilution. VAAYU GNN corrects this residual using NASA FIRMS boundary nodes and station wind adjacency.`;
+    return `Numerical Physics vs GNN Residual: Global Eulerian models (CAMS) underpredict Day-2 and Day-3 AQI by ~68 µg/m³ due to coarse 40km grid plume dilution. Aeris GNN corrects this residual using NASA FIRMS boundary nodes and station wind adjacency.`;
   }
   return `Based on latest spatiotemporal graph inference: Atmospheric inversion score is ${causal_drivers.inversion_index}/100 and upwind stubble fire flux is ${causal_drivers.fire_influence}/100. Severe stagnation will pool over East & North Delhi within ${alert.lead_time_hours} hours. Pre-emptive execution of Stage IV measures is strongly advised.`;
 }
@@ -231,8 +230,8 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
     {
       id: "init",
       sender: "assistant",
-      text: "Hello Officer. I am the VAAYU AI Causal Agent. I have synthesized the spatiotemporal graph, NASA FIRMS satellite fire telemetry, and planetary boundary layer physics for this event. Ask me anything about the causal drivers, station entrapment, or GRAP emergency mandates.",
-      words: "Hello Officer. I am the VAAYU AI Causal Agent. I have synthesized the spatiotemporal graph, NASA FIRMS satellite fire telemetry, and planetary boundary layer physics for this event. Ask me anything about the causal drivers, station entrapment, or GRAP emergency mandates.".split(" "),
+      text: "Hello Officer. I am Aeris, your atmospheric intelligence agent. I have synthesized the spatiotemporal graph, NASA FIRMS satellite fire telemetry, and planetary boundary layer physics for this event. Ask me anything about the causal drivers, station entrapment, or GRAP emergency mandates.",
+      words: "Hello Officer. I am Aeris, your atmospheric intelligence agent. I have synthesized the spatiotemporal graph, NASA FIRMS satellite fire telemetry, and planetary boundary layer physics for this event. Ask me anything about the causal drivers, station entrapment, or GRAP emergency mandates.".split(" "),
     },
   ]);
   const [status, setStatus] = useState<ChatStatus>("idle");
@@ -294,8 +293,8 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
               className="w-full flex items-start gap-2.5"
             >
               {msg.sender === "assistant" && (
-                <div className="shrink-0 mt-0.5" title="VAAYU AI Researcher">
-                  <AgentAvatar name="researcher" size={24} />
+                <div className="shrink-0 mt-0.5" title="Aeris">
+                  <AgentAvatar name="aeris" size={24} />
                 </div>
               )}
               <MessageContent className={msg.sender === "user" ? "max-w-[80%]" : "max-w-[90%]"}>
@@ -341,10 +340,10 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
         {status === "thinking" && (
           <div className="py-1 px-2">
             <Marker className="flex items-center gap-2.5">
-              <AgentAvatar name="researcher" size={20} pulse />
+              <AgentAvatar name="aeris" size={20} pulse />
               <MarkerContent>
                 <motion.span
-                  className="bg-clip-text text-xs font-medium text-transparent"
+                  className="bg-clip-text text-sm font-vt323 tracking-wider text-transparent"
                   style={{
                     backgroundImage:
                       "linear-gradient(90deg, var(--muted-foreground) 40%, var(--foreground) 50%, var(--muted-foreground) 60%)",
@@ -358,7 +357,7 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
                     ease: "linear",
                   }}
                 >
-                  VAAYU AI Researcher synthesizing causal telemetry...
+                  AERIS AI Researcher synthesizing causal telemetry...
                 </motion.span>
               </MarkerContent>
             </Marker>
@@ -415,48 +414,6 @@ function VoicePanel() {
           <Mic className="size-3 text-primary-foreground" />
         )}
         <span>{recording ? "Stop" : "Start"}</span>
-      </Button>
-    </motion.div>
-  );
-}
-
-function VideoPanel() {
-  const [active, setActive] = useState(true);
-
-  return (
-    <motion.div
-      key="video"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className="w-full p-5 flex flex-col items-center gap-3"
-    >
-      <div className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-muted px-3">
-        <Video
-          className={cn(
-            "size-3.5",
-            active ? "text-primary animate-pulse" : "text-muted-foreground/60",
-          )}
-        />
-        <span className="text-xs text-muted-foreground font-medium">
-          {active ? "Video feed active" : "Camera off"}
-        </span>
-      </div>
-
-      <Button
-        type="button"
-        onClick={() => setActive((prev) => !prev)}
-        size="sm"
-        className="rounded-full h-7 px-3 text-xs gap-1.5 flex items-center justify-center hover:bg-primary/80 cursor-pointer"
-        aria-label={active ? "Stop video feed" : "Start video feed"}
-      >
-        {active ? (
-          <CircleStop className="size-3 text-primary-foreground" />
-        ) : (
-          <Video className="size-3 text-primary-foreground" />
-        )}
-        <span>{active ? "Stop" : "Start"}</span>
       </Button>
     </motion.div>
   );
@@ -525,7 +482,6 @@ function SettingsPanel() {
 const TABS_CONFIG = [
   { value: "chat", label: "Chat", icon: MessageCircle },
   { value: "voice", label: "Voice", icon: AudioLines },
-  { value: "video", label: "Video", icon: Video },
   { value: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -583,7 +539,6 @@ const TabsDemo = ({ alert, className }: TabsDemoProps) => {
             <AnimatePresence mode="wait" initial={false}>
               {tab === "chat" && <ChatPanel key="chat" alert={alert} />}
               {tab === "voice" && <VoicePanel key="voice" />}
-              {tab === "video" && <VideoPanel key="video" />}
               {tab === "settings" && <SettingsPanel key="settings" />}
             </AnimatePresence>
           </TabsContent>

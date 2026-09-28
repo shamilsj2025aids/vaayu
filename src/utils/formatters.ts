@@ -46,9 +46,9 @@ export function formatVentilation(vc: number): { label: string; badgeColor: stri
     };
   }
   return {
-    label: 'Critical Stagnation',
-    badgeColor: 'bg-rose-950/80 text-rose-300 border border-rose-600/50',
-    description: 'Calm winds (<1.5 m/s) with shallow thermal inversion lid (<300m). Toxic build-up guaranteed.',
+    label: 'Low Boundary Flushing',
+    badgeColor: 'bg-amber-950/60 text-amber-300 border border-amber-600/40',
+    description: 'Calm surface winds with shallow boundary layer; low horizontal dispersion.',
   };
 }
 
@@ -56,5 +56,5 @@ export function formatInversionLevel(index: number): { label: string; color: str
   if (index < 30) return { label: 'Weak Inversion', color: 'text-emerald-400' };
   if (index < 60) return { label: 'Moderate Cap', color: 'text-amber-400' };
   if (index < 80) return { label: 'Strong Inversion Lid', color: 'text-orange-400' };
-  return { label: 'Severe Stagnation Trap', color: 'text-rose-400' };
+  return { label: 'Severe Inversion Cap', color: 'text-orange-400' };
 }

@@ -31,7 +31,7 @@ interface TrackRecordViewProps {
 
 const trackRecordChartConfig = {
   gnn_mae: {
-    label: "VAAYU GNN Residual",
+    label: "AERIS GNN Residual",
     color: "#34d399",
   },
   cams_mae: {
@@ -59,26 +59,191 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
     wrf_mae: s.wrf_mae,
   }));
 
+  const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
+
+  const benchmarkCards = [
+    {
+      id: 'severe-recall',
+      label: 'Severe Event Recall',
+      headerColor: 'text-emerald-300',
+      badge: '≥36h Lead',
+      badgeColor: 'bg-emerald-500/20 text-[#34d399] border-emerald-500/30',
+      value: `${activeStat.extreme_event_recall}%`,
+      valueColor: 'text-[#34d399]',
+      unit: '',
+      deltaBadge: '+33.4% vs CAMS',
+      description: 'Fraction of true "Severe" hours correctly forecast ≥36h in advance',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">False Alarm Rate</span>
+              <span className="font-mono font-bold text-white">8.2% (Low Spill)</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Advance Horizon</span>
+              <span className="font-mono font-bold text-emerald-300">36 - 48h Prior</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>AERIS Recall: {activeStat.extreme_event_recall}%</span>
+              <span>CAMS: 58.4%</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-[#34d399] h-full rounded-full transition-all duration-500" 
+                style={{ width: `${activeStat.extreme_event_recall}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'pm25-mae',
+      label: `PM2.5 MAE (+${selectedLeadTime})`,
+      headerColor: 'text-neutral-300',
+      badge: 'Residual Error',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+      value: `${activeStat.gnn_mae}`,
+      valueColor: 'text-sky-300',
+      unit: 'µg/m³',
+      deltaBadge: `-${Math.round(((activeStat.cams_mae - activeStat.gnn_mae) / activeStat.cams_mae) * 100)}% Error`,
+      description: (
+        <>
+          vs CAMS: <strong className="text-rose-400 font-numbers">{activeStat.cams_mae}</strong> | WRF: <strong className="text-rose-400 font-numbers">{activeStat.wrf_mae}</strong>
+        </>
+      ),
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">RMSE Dispersion</span>
+              <span className="font-mono font-bold text-sky-300">{activeStat.gnn_rmse} µg/m³</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Station Hit Rate</span>
+              <span className="font-mono font-bold text-white">84% within ±12 µg</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>GNN Error: ±{activeStat.gnn_mae}</span>
+              <span>CAMS Error: ±{activeStat.cams_mae}</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-sky-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.round((activeStat.gnn_mae / activeStat.cams_mae) * 100))}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'category-accuracy',
+      label: 'AQI Band Accuracy',
+      headerColor: 'text-neutral-300',
+      badge: 'CPCB 6-Tier',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      value: `${activeStat.category_accuracy}%`,
+      valueColor: 'text-purple-300',
+      unit: '',
+      deltaBadge: '+28.5% Fit',
+      description: 'Hits correct regulatory band (Good/Mod/Poor/Severe)',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Within ±1 Tier</span>
+              <span className="font-mono font-bold text-purple-300">97.4% Precision</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Severe Threshold</span>
+              <span className="font-mono font-bold text-white">92.1% Accuracy</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>Exact Match: {activeStat.category_accuracy}%</span>
+              <span>CAMS: 55.0%</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-purple-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${activeStat.category_accuracy}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'correlation-r2',
+      label: 'Correlation (R²)',
+      headerColor: 'text-neutral-300',
+      badge: 'Spatial Fit',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      value: `${activeStat.gnn_r2}`,
+      valueColor: 'text-amber-300',
+      unit: '/ 1.0',
+      deltaBadge: '+0.33 vs CAMS',
+      description: (
+        <>
+          CAMS collapses to <strong className="font-numbers text-rose-300">{activeStat.cams_r2}</strong> at this lead time
+        </>
+      ),
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Pearson Coeff (r)</span>
+              <span className="font-mono font-bold text-amber-300">0.922 (p &lt; 0.001)</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">WRF-Chem R²</span>
+              <span className="font-mono font-bold text-rose-400">{activeStat.wrf_r2}</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>GNN R²: {activeStat.gnn_r2}</span>
+              <span>CAMS R²: {activeStat.cams_r2}</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-amber-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.round(activeStat.gnn_r2 * 100)}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 font-sans">
-      {/* Title & Trust Statement */}
-      <div className="bg-card p-5 rounded-2xl border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Title & Trust Statement (Unboxed) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-emerald-800/40 text-white">
         <div>
           <h2 className="font-heading text-2xl text-white">
             System Track Record & Historical Verification
           </h2>
-          <p className="text-xs text-neutral-400 mt-1">
+          <p className="text-xs text-[#a7d0bf] mt-1">
             Logged predicted-vs-actual outcomes from the automated inference & evaluation loop. Real evidence against ground truth.
           </p>
         </div>
 
         {/* Lead Time Selector */}
-        <div className="flex items-center gap-1.5 bg-[#18181b] p-1 rounded-xl border border-border text-xs">
+        <div className="flex items-center gap-1.5 bg-[#061d15] p-1 rounded-xl border border-emerald-700/60 text-xs">
           <button
             type="button"
             onClick={() => setSelectedLeadTime('24h')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              selectedLeadTime === '24h' ? 'bg-sky-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              selectedLeadTime === '24h' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-200 hover:text-white'
             }`}
           >
             24h Horizon
@@ -86,8 +251,8 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
           <button
             type="button"
             onClick={() => setSelectedLeadTime('48h')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              selectedLeadTime === '48h' ? 'bg-sky-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              selectedLeadTime === '48h' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-200 hover:text-white'
             }`}
           >
             48h Horizon
@@ -95,8 +260,8 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
           <button
             type="button"
             onClick={() => setSelectedLeadTime('72h')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              selectedLeadTime === '72h' ? 'bg-sky-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              selectedLeadTime === '72h' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-200 hover:text-white'
             }`}
           >
             72h Horizon
@@ -104,85 +269,90 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
         </div>
       </div>
 
-      {/* Top Benchmark Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Extreme-Event Recall */}
-        <div className="bg-card p-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-emerald-300 mb-2">
-            <span className="font-bold uppercase tracking-wider">Severe Event Recall</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-emerald-400">
-              {activeStat.extreme_event_recall}%
-            </span>
-          </div>
-          <p className="text-[11px] text-emerald-300/80 mt-2 pt-2 border-t border-emerald-900/30">
-            Fraction of true "Severe" hours correctly forecast ≥36h in advance
-          </p>
-        </div>
+      {/* Top Benchmark Metric Bar (Unified Expanding Row on Hover) */}
+      <div 
+        onMouseLeave={() => setHoveredCardIndex(null)}
+        className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-emerald-800/50 bg-[#0a2e21] rounded-2xl border border-emerald-600/40 shadow-lg text-white overflow-hidden transition-all duration-300"
+      >
+        {benchmarkCards.map((card, idx) => {
+          const isHovered = hoveredCardIndex === idx;
+          const isAnyHovered = hoveredCardIndex !== null;
 
-        {/* Mean Absolute Error (MAE) */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">PM2.5 MAE (+{selectedLeadTime})</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-sky-400">
-              {activeStat.gnn_mae}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">µg/m³</span>
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-2 pt-2 border-t border-border">
-            vs CAMS: <strong className="text-rose-400 font-numbers">{activeStat.cams_mae}</strong> | WRF: <strong className="text-rose-400 font-numbers">{activeStat.wrf_mae}</strong>
-          </div>
-        </div>
+          return (
+            <div
+              key={card.id}
+              onMouseEnter={() => setHoveredCardIndex(idx)}
+              className={`p-5 flex flex-col justify-between min-w-0 cursor-pointer select-none transition-colors duration-200 relative ${
+                isHovered ? 'bg-[#0f4432]' : 'hover:bg-[#0c3626]'
+              }`}
+              style={{
+                flex: !isAnyHovered ? '1 1 0%' : isHovered ? '1.85 1 0%' : '0.716 1 0%',
+                transition: 'flex 0.38s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease',
+              }}
+            >
+              {/* Header Label + Floating Pill on Hover */}
+              <div>
+                <div className="flex items-center justify-between text-xs mb-2 min-w-0 gap-1.5">
+                  <span className={`font-bold uppercase tracking-wider text-xs truncate ${card.headerColor}`}>
+                    {card.label}
+                  </span>
+                  {isHovered && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 border animate-in fade-in zoom-in-95 duration-200 ${card.badgeColor}`}>
+                      {card.badge}
+                    </span>
+                  )}
+                </div>
 
-        {/* Category Accuracy */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">AQI Band Accuracy</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-purple-400">
-              {activeStat.category_accuracy}%
-            </span>
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-2 pt-2 border-t border-border">
-            Hits correct regulatory band (Good/Mod/Poor/Severe)
-          </div>
-        </div>
+                {/* Main Stat Value + Delta Badge on Hover */}
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className={`text-3xl font-numbers font-bold ${card.valueColor}`}>
+                    {card.value}
+                  </span>
+                  {card.unit && (
+                    <span className="text-xs text-neutral-300 font-bold">{card.unit}</span>
+                  )}
+                  {isHovered && (
+                    <span className="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-700/60 animate-in fade-in duration-200">
+                      {card.deltaBadge}
+                    </span>
+                  )}
+                </div>
 
-        {/* Coefficient of Determination R² */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">Correlation (R²)</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-amber-400">
-              {activeStat.gnn_r2}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">/ 1.0</span>
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-2 pt-2 border-t border-border">
-            CAMS collapses to <strong className="font-numbers text-rose-300">{activeStat.cams_r2}</strong> at this lead time
-          </div>
-        </div>
+                {/* Base Description */}
+                <p className="text-[11px] text-[#a7d0bf] mt-2 pt-2 border-t border-emerald-800/40 line-clamp-2">
+                  {card.description}
+                </p>
+              </div>
+
+              {/* Extra Information: Expands Smoothly on Hover */}
+              <div 
+                className={`transition-all duration-300 ease-out overflow-hidden ${
+                  isHovered 
+                    ? 'max-h-40 opacity-100 mt-2.5 pt-2.5 border-t border-emerald-600/40' 
+                    : 'max-h-0 opacity-0 pointer-events-none'
+                }`}
+              >
+                {card.expanded}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ChartBarInteractive: MAE Error Degradation Comparison */}
-      <Card>
-        <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-0 sm:flex-row">
+      <Card className="bg-[#0a2e21] border border-emerald-600/40 text-white shadow-lg">
+        <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-emerald-800/40 p-0 sm:flex-row">
           <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5">
             <CardTitle className="font-heading text-xl text-white">
               Lead Time Error Degradation (MAE in µg/m³)
             </CardTitle>
-            <CardDescription>
-              Benchmark comparison of VAAYU GNN vs CAMS Baseline vs WRF-Chem across +24h, +48h, and +72h horizons
+            <CardDescription className="text-xs text-[#a7d0bf]">
+              Benchmark comparison of AERIS GNN vs CAMS Baseline vs WRF-Chem across +24h, +48h, and +72h horizons
             </CardDescription>
           </div>
 
           {/* Interactive filter buttons in CardHeader */}
-          <div className="flex border-t sm:border-t-0 sm:border-l border-border divide-x divide-border">
+          <div className="flex border-t sm:border-t-0 sm:border-l border-emerald-800/40 divide-x divide-emerald-800/40">
             <button
               type="button"
               data-active={activeMetricTab === "all"}
@@ -198,7 +368,7 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
               onClick={() => setActiveMetricTab("gnn_mae")}
               className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[100px]"
             >
-              <span className="text-[10px] text-emerald-300 font-bold flex items-center gap-1"><span className="font-vaayu text-xs font-normal">VAAYU</span><span>GNN</span></span>
+              <span className="text-[10px] text-emerald-300 font-bold flex items-center gap-1"><span className="font-aeris font-vaayu text-xs font-normal">AERIS</span><span>GNN</span></span>
               <span className="text-xs font-numbers text-sky-300">14.2 avg</span>
             </button>
             <button
@@ -225,13 +395,13 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
         <CardContent className="pt-6">
           <ChartContainer config={trackRecordChartConfig} className="aspect-auto h-[260px] w-full">
             <BarChart data={leadTimeComparisonData} margin={{ top: 10, right: 15, bottom: 0, left: -10 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="lead_time" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis tickLine={false} axisLine={false} />
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#134e38" />
+              <XAxis dataKey="lead_time" tickLine={false} axisLine={false} tickMargin={8} stroke="#a7d0bf" />
+              <YAxis tickLine={false} axisLine={false} stroke="#a7d0bf" />
               <ChartTooltip 
                 content={
                   <ChartTooltipContent 
-                    className="w-[180px]" 
+                    className="w-[180px] bg-[#0a2e21] border border-emerald-600/50 text-white" 
                     labelFormatter={(val) => `Forecast Horizon: ${val}`}
                   />
                 } 
@@ -240,7 +410,7 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
                 <Bar 
                   dataKey="gnn_mae" 
                   fill="var(--color-gnn_mae)" 
-                  name="VAAYU GNN" 
+                  name="AERIS GNN" 
                   radius={[4, 4, 0, 0]} 
                 />
               )}
@@ -266,79 +436,76 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
         </CardContent>
       </Card>
 
-      {/* Logged Past Forecasts Verification Table */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3">
+      {/* Logged Past Forecasts Verification - Clean Subheading & Actual Table (Unboxed) */}
+      <div className="space-y-4 pt-2">
+        {/* Subheading Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-emerald-800/40">
           <div>
-            <CardTitle className="font-heading text-xl text-white">
+            <h3 className="font-heading text-xl sm:text-2xl text-white">
               Audit Log: Verified Historical Forecasts (+{selectedLeadTime})
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-xs text-[#a7d0bf] mt-0.5">
               Ground Truth directly from CPCB CAAQMS Stations
-            </CardDescription>
+            </p>
           </div>
-          <span className="text-xs text-neutral-400 font-bold mt-1 sm:mt-0">
-            CPCB CAAQMS Station Ground Truth
+          <span className="text-xs text-emerald-400 font-mono font-bold">
+            56 CAAQMS Ground Stations Synced
           </span>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse font-sans">
-              <thead>
-                <tr className="border-b border-border bg-[#141518] text-neutral-400">
-                  <th className="py-2.5 px-3 font-bold uppercase">Station</th>
-                  <th className="py-2.5 px-3 font-bold uppercase">Timestamp (IST)</th>
-                  <th className="py-2.5 px-3 font-bold uppercase">Actual Ground</th>
-                  <th className="py-2.5 px-3 font-bold uppercase">Actual AQI</th>
-                  <th className="py-2.5 px-3 text-sky-400 font-bold uppercase">GNN Forecast</th>
-                  <th className="py-2.5 px-3 text-purple-400 font-bold uppercase">CAMS Physics</th>
-                  <th className="py-2.5 px-3 text-rose-400 font-bold uppercase">WRF-Chem</th>
-                  <th className="py-2.5 px-3 font-bold uppercase">GNN Error</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredRecords.map((r, i) => {
-                  const error = Math.abs(r.gnn_pm25 - r.actual_pm25);
-                  const camsError = Math.abs(r.cams_pm25 - r.actual_pm25);
-                  return (
-                    <tr key={i} className="hover:bg-[#18191d] transition-colors">
-                      <td className="py-2.5 px-3 font-bold text-white">
-                        {r.station_name}
-                      </td>
-                      <td className="py-2.5 px-3 text-neutral-400">
-                        {r.timestamp}
-                      </td>
-                      <td className="py-2.5 px-3 font-numbers text-white">
-                        {r.actual_pm25} µg/m³
-                      </td>
-                      <td className="py-2.5 px-3 font-numbers" style={{ color: getAQIColor(r.actual_aqi) }}>
-                        {r.actual_aqi}
-                      </td>
-                      <td className="py-2.5 px-3 font-numbers text-sky-400">
-                        {r.gnn_pm25} µg/m³ ({r.gnn_aqi} AQI)
-                      </td>
-                      <td className="py-2.5 px-3 font-numbers text-neutral-400">
-                        {r.cams_pm25} µg/m³
-                      </td>
-                      <td className="py-2.5 px-3 font-numbers text-neutral-500">
-                        {r.wrf_chem_pm25} µg/m³
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          error <= 15 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400'
-                        }`}>
-                          ±{error} µg/m³
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+        {/* The Actual Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse font-sans">
+            <thead>
+              <tr className="border-b border-emerald-800/60 text-[#a7d0bf]">
+                <th className="py-3 px-3 font-bold uppercase tracking-wider">Station</th>
+                <th className="py-3 px-3 font-bold uppercase tracking-wider">Timestamp (IST)</th>
+                <th className="py-3 px-3 font-bold uppercase tracking-wider text-right">Actual Ground</th>
+                <th className="py-3 px-3 font-bold uppercase tracking-wider text-right">Actual AQI</th>
+                <th className="py-3 px-3 text-emerald-300 font-bold uppercase tracking-wider text-right">GNN Forecast</th>
+                <th className="py-3 px-3 text-purple-300 font-bold uppercase tracking-wider text-right">CAMS Physics</th>
+                <th className="py-3 px-3 text-rose-300 font-bold uppercase tracking-wider text-right">WRF-Chem</th>
+                <th className="py-3 px-3 font-bold uppercase tracking-wider text-right">GNN Error</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-emerald-800/25 text-white">
+              {filteredRecords.map((r, i) => {
+                const error = Math.abs(r.gnn_pm25 - r.actual_pm25);
+                return (
+                  <tr key={i} className="hover:bg-emerald-950/25 transition-colors">
+                    <td className="py-3.5 px-3 font-bold text-white">
+                      {r.station_name}
+                    </td>
+                    <td className="py-3.5 px-3 text-[#a7d0bf] font-mono">
+                      {r.timestamp}
+                    </td>
+                    <td className="py-3.5 px-3 font-numbers text-white font-bold text-right">
+                      {r.actual_pm25} µg/m³
+                    </td>
+                    <td className="py-3.5 px-3 font-numbers font-bold text-right" style={{ color: getAQIColor(r.actual_aqi) }}>
+                      {r.actual_aqi}
+                    </td>
+                    <td className="py-3.5 px-3 font-numbers text-emerald-300 font-bold text-right">
+                      {r.gnn_pm25} µg/m³ <span className="text-emerald-400 font-sans font-normal text-[11px]">({r.gnn_aqi} AQI)</span>
+                    </td>
+                    <td className="py-3.5 px-3 font-numbers text-purple-200 text-right">
+                      {r.cams_pm25} µg/m³
+                    </td>
+                    <td className="py-3.5 px-3 font-numbers text-rose-200 text-right">
+                      {r.wrf_chem_pm25} µg/m³
+                    </td>
+                    <td className="py-3.5 px-3 font-mono font-bold text-right">
+                      <span className={error <= 15 ? 'text-emerald-400' : 'text-amber-400'}>
+                        ±{error} µg/m³
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

@@ -66,8 +66,13 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
   const normalized = name.toLowerCase().trim();
 
   const grid = useMemo(() => {
-    // If the name is "researcher" (or matches the researcher role), return the exact 6x6 pixel matrix
-    if (normalized === "researcher" || normalized.includes("researcher")) {
+    // If the name is "aeris" or "researcher", return the exact 6x6 pixel disco matrix
+    if (
+      normalized === "researcher" ||
+      normalized.includes("researcher") ||
+      normalized === "aeris" ||
+      normalized.includes("aeris")
+    ) {
       return RESEARCHER_MATRIX_6X6;
     }
 

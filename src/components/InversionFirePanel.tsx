@@ -87,15 +87,180 @@ export const InversionFirePanel: React.FC<InversionFirePanelProps> = ({
     fire_flux: Math.round(Math.min(95, d.score * 0.85 + (d.hour % 24 > 16 ? 18 : 6))),
   }));
 
+  const [hoveredGaugeIndex, setHoveredGaugeIndex] = useState<number | null>(null);
+
+  const telemetryGauges = [
+    {
+      id: 'inversion-index',
+      label: 'Inversion Index',
+      headerColor: 'text-[#a7d0bf]',
+      badge: inversionStatus.label,
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      value: `${currentTrend?.score || 55}`,
+      valueColor: 'text-purple-400',
+      unit: '/ 100',
+      deltaBadge: 'Thermal Cap Active',
+      statusText: inversionStatus.label,
+      statusColor: inversionStatus.color,
+      description: 'Thermal cap suppressing vertical buoyant dilution',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Lapse Rate</span>
+              <span className="font-mono font-bold text-white">+2.4°C / 100m</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Cap Level</span>
+              <span className="font-mono font-bold text-purple-300">925 hPa (~750m)</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>Trap Potential: {currentTrend?.score || 55}%</span>
+              <span>Stability: Extreme</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-purple-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${currentTrend?.score || 55}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'ventilation-vc',
+      label: 'Ventilation (Vc)',
+      headerColor: 'text-[#a7d0bf]',
+      badge: ventStatus.label,
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      value: (currentTrend?.ventilation || 2800).toLocaleString(),
+      valueColor: 'text-white',
+      unit: 'm²/s',
+      deltaBadge: '+800 over Critical',
+      statusText: ventStatus.label,
+      statusColor: ventStatus.badgeColor,
+      description: 'Critical threshold: < 2,000 m²/s traps stagnation',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Transport Wind</span>
+              <span className="font-mono font-bold text-white">4.2 m/s (NW)</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Clearance</span>
+              <span className="font-mono font-bold text-emerald-300">Moderate Lateral</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>Current Vc: {currentTrend?.ventilation || 2800}</span>
+              <span>Floor: 2,000</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-emerald-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.round(((currentTrend?.ventilation || 2800) / 6000) * 100))}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'mixing-pblh',
+      label: 'Mixing Height (PBLH)',
+      headerColor: 'text-[#a7d0bf]',
+      badge: 'Diurnal Ceiling',
+      badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+      value: `${currentTrend?.pblh || 320}`,
+      valueColor: 'text-emerald-400',
+      unit: 'meters',
+      deltaBadge: 'Night Trap',
+      statusText: 'Diurnal Surface Ceiling',
+      statusColor: 'text-slate-300',
+      description: 'Night compression forms shallow 200m particulate trap',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Night Minimum</span>
+              <span className="font-mono font-bold text-teal-300">120 meters</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Day Peak</span>
+              <span className="font-mono font-bold text-white">1,150 meters</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>PBL Height: {currentTrend?.pblh || 320}m</span>
+              <span>Ceiling: 1,500m</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-teal-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.round(((currentTrend?.pblh || 320) / 1200) * 100))}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'firms-power',
+      label: 'FIRMS Fire Power',
+      headerColor: 'text-[#a7d0bf]',
+      badge: 'Biomass Influx',
+      badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+      value: `${Math.round(totalFRP)}`,
+      valueColor: 'text-orange-400',
+      unit: `MW (${hotspots.length} fires)`,
+      deltaBadge: 'NW Wind Corridor',
+      statusText: `${punjabHotspots} in Punjab • ${haryanaHotspots} in Haryana`,
+      statusColor: 'text-amber-300',
+      description: 'Transported along NW corridor into Delhi airshed',
+      expanded: (
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Punjab Clusters</span>
+              <span className="font-mono font-bold text-orange-300">{punjabHotspots} active</span>
+            </div>
+            <div>
+              <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Haryana Clusters</span>
+              <span className="font-mono font-bold text-amber-300">{haryanaHotspots} active</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[#a7d0bf] font-mono">
+              <span>Fire Intensity: {Math.round(totalFRP)} MW</span>
+              <span>Corridor: 315° NW</span>
+            </div>
+            <div className="w-full bg-emerald-950/80 rounded-full h-1.5 overflow-hidden flex">
+              <div 
+                className="bg-orange-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.round((totalFRP / 3500) * 100))}%` }} 
+              />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 font-sans">
-      {/* Title & Physics Context (Detached Box) */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-card p-5 rounded-2xl border border-border">
+      {/* Title & Physics Context Header (Unboxed) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-4 border-b border-emerald-800/40">
         <div>
           <h2 className="font-heading text-2xl text-white">
             Atmospheric Inversion Strength & Fire Plume Influx
           </h2>
-          <p className="text-xs text-neutral-400 mt-1">
+          <p className="text-xs text-[#a7d0bf] mt-1">
             Physical boundary layers tracked as primary metrics rather than hidden black-box inputs
           </p>
         </div>
@@ -106,91 +271,79 @@ export const InversionFirePanel: React.FC<InversionFirePanelProps> = ({
         </div>
       </div>
 
-      {/* Top Telemetry Gauges */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Gauge 1: Inversion Strength Index */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">Inversion Index</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-purple-400">
-              {currentTrend?.score || 55}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">/ 100</span>
-          </div>
-          <div className="mt-3 pt-2 border-t border-border text-xs">
-            <div className={`font-bold ${inversionStatus.color}`}>
-              {inversionStatus.label}
-            </div>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              Thermal cap suppressing vertical buoyant dilution
-            </p>
-          </div>
-        </div>
+      {/* Top Telemetry Gauges (Unified Expanding Row on Hover) */}
+      <div 
+        onMouseLeave={() => setHoveredGaugeIndex(null)}
+        className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-emerald-800/50 bg-[#0a2e21] rounded-2xl border border-emerald-600/40 shadow-lg text-white overflow-hidden transition-all duration-300"
+      >
+        {telemetryGauges.map((gauge, idx) => {
+          const isHovered = hoveredGaugeIndex === idx;
+          const isAnyHovered = hoveredGaugeIndex !== null;
 
-        {/* Gauge 2: Ventilation Coefficient */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">Ventilation (Vc)</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-white">
-              {(currentTrend?.ventilation || 2800).toLocaleString()}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">m²/s</span>
-          </div>
-          <div className="mt-3 pt-2 border-t border-border text-xs">
-            <span className={`px-2 py-0.5 rounded font-bold text-[11px] ${ventStatus.badgeColor}`}>
-              {ventStatus.label}
-            </span>
-            <p className="text-[11px] text-neutral-400 mt-1">
-              Critical threshold: &lt; 2,000 m²/s traps stagnation
-            </p>
-          </div>
-        </div>
+          return (
+            <div
+              key={gauge.id}
+              onMouseEnter={() => setHoveredGaugeIndex(idx)}
+              className={`p-5 flex flex-col justify-between min-w-0 cursor-pointer select-none transition-colors duration-200 relative ${
+                isHovered ? 'bg-[#0f4432]' : 'hover:bg-[#0c3626]'
+              }`}
+              style={{
+                flex: !isAnyHovered ? '1 1 0%' : isHovered ? '1.85 1 0%' : '0.716 1 0%',
+                transition: 'flex 0.38s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease',
+              }}
+            >
+              {/* Header Label + Status Pill on Hover */}
+              <div>
+                <div className="flex items-center justify-between text-xs mb-2 min-w-0 gap-1.5">
+                  <span className={`font-bold uppercase tracking-wider text-[10px] truncate ${gauge.headerColor}`}>
+                    {gauge.label}
+                  </span>
+                  {isHovered && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 border animate-in fade-in zoom-in-95 duration-200 ${gauge.badgeColor}`}>
+                      {gauge.badge}
+                    </span>
+                  )}
+                </div>
 
-        {/* Gauge 3: Planetary Boundary Layer Height */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">Mixing Height (PBLH)</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-emerald-400">
-              {currentTrend?.pblh || 320}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">meters</span>
-          </div>
-          <div className="mt-3 pt-2 border-t border-border text-xs">
-            <div className="font-bold text-slate-300">
-              Diurnal Surface Ceiling
-            </div>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              Night compression forms shallow 200m particulate trap
-            </p>
-          </div>
-        </div>
+                {/* Main Stat Value + Delta Badge on Hover */}
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className={`text-3xl font-numbers font-bold ${gauge.valueColor}`}>
+                    {gauge.value}
+                  </span>
+                  {gauge.unit && (
+                    <span className="text-xs text-[#a7d0bf] font-bold">{gauge.unit}</span>
+                  )}
+                  {isHovered && (
+                    <span className="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-700/60 animate-in fade-in duration-200">
+                      {gauge.deltaBadge}
+                    </span>
+                  )}
+                </div>
 
-        {/* Gauge 4: NASA FIRMS Fire Radiative Power */}
-        <div className="bg-card p-4 rounded-2xl border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-            <span className="font-bold uppercase tracking-wider">FIRMS Fire Power</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-numbers text-orange-400">
-              {Math.round(totalFRP)}
-            </span>
-            <span className="text-xs text-neutral-400 font-bold">MW ({hotspots.length} fires)</span>
-          </div>
-          <div className="mt-3 pt-2 border-t border-border text-xs">
-            <div className="font-bold text-amber-300">
-              {punjabHotspots} in Punjab • {haryanaHotspots} in Haryana
+                {/* Base Status / Description */}
+                <div className="mt-3 pt-2 border-t border-emerald-800/40 text-xs">
+                  <div className={`font-bold ${gauge.statusColor}`}>
+                    {gauge.statusText}
+                  </div>
+                  <p className="text-[11px] text-[#a7d0bf] mt-0.5 line-clamp-2">
+                    {gauge.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Extra Information: Expands Smoothly on Hover */}
+              <div 
+                className={`transition-all duration-300 ease-out overflow-hidden ${
+                  isHovered 
+                    ? 'max-h-40 opacity-100 mt-2.5 pt-2.5 border-t border-emerald-600/40' 
+                    : 'max-h-0 opacity-0 pointer-events-none'
+                }`}
+              >
+                {gauge.expanded}
+              </div>
             </div>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              Transported along NW corridor
-            </p>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {/* Chart Section */}
@@ -372,34 +525,34 @@ export const InversionFirePanel: React.FC<InversionFirePanelProps> = ({
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="p-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-emerald-800/40">
             {plumes.map((plume) => (
               <div 
                 key={plume.source_id}
-                className="p-4 rounded-xl bg-[#141518] border border-border space-y-3"
+                className="p-5 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-xs">{plume.source_name}</span>
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-lg font-bold bg-orange-950/60 text-orange-300 border border-orange-700/50">
+                  <span className="font-bold text-white text-sm">{plume.source_name}</span>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-orange-950/80 text-orange-300 border border-orange-700/60 uppercase">
                     {plume.plume_intensity} Plume
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-card border border-border">
-                    <span className="text-neutral-400 block text-[10px] font-bold">ETA</span>
-                    <span className="text-amber-400 font-numbers text-sm">+{plume.eta_delhi_hours}h</span>
+                <div className="grid grid-cols-3 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">ETA</span>
+                    <span className="text-amber-400 font-numbers text-base font-bold">+{plume.eta_delhi_hours}h</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-card border border-border">
-                    <span className="text-neutral-400 block text-[10px] font-bold">Wind Speed</span>
-                    <span className="text-white font-numbers text-sm">{plume.current_wind_speed_kmh} km/h</span>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Wind Speed</span>
+                    <span className="text-white font-numbers text-base font-bold">{plume.current_wind_speed_kmh} km/h</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-card border border-border">
-                    <span className="text-neutral-400 block text-[10px] font-bold">Bearing</span>
-                    <span className="text-sky-300 font-numbers text-sm">{plume.corridor_bearing_deg}° NW</span>
+                  <div>
+                    <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold tracking-wider">Bearing</span>
+                    <span className="text-sky-300 font-numbers text-base font-bold">{plume.corridor_bearing_deg}° NW</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                <p className="text-xs text-[#a7d0bf] leading-relaxed pt-1 border-t border-emerald-800/30">
                   Direct atmospheric trajectory entering North-West Delhi before pooling in the basin.
                 </p>
               </div>
