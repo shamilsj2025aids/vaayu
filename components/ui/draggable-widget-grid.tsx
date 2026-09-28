@@ -325,27 +325,18 @@ function choose(
 	cx: number,
 	cy: number,
 ): WidgetItem[] | null {
-	const distance = (s: Slot, inset: number) => {
-		const ix = (s.right - s.left) * inset
-		const iy = (s.bottom - s.top) * inset
-		const dx = Math.max(s.left + ix - cx, 0, cx - (s.right - ix))
-		const dy = Math.max(s.top + iy - cy, 0, cy - (s.bottom - iy))
-		return Math.hypot(dx, dy)
-	}
 	const toCentre = (s: Slot) =>
 		Math.hypot((s.left + s.right) / 2 - cx, (s.top + s.bottom) / 2 - cy)
 
-	let best = distance(home, 0)
-	if (best === 0) return null
+	const homeCentre = toCentre(home)
+	// Must be closer to the candidate slot than to home slot by a clear threshold to avoid jitter
+	let best = Math.max(homeCentre * 0.75, 40)
 	let pick: WidgetItem[] | null = null
-	let bestCentre = Infinity
+
 	for (const { order, slot } of candidates) {
-		const d = distance(slot, ENTER)
 		const c = toCentre(slot)
-		// On a tie the earlier candidate wins; group swaps are listed first.
-		if (d < best || (d === best && pick && c < bestCentre)) {
-			best = d
-			bestCentre = c
+		if (c < best) {
+			best = c
 			pick = order
 		}
 	}
@@ -376,7 +367,7 @@ function candidatesFor(
 			const area = { col, row, w: me.w, h: me.h }
 			if (overlaps(area, me)) continue
 			const group = places.filter((p) => overlaps(p, area))
-			if (group.length < 2 || !group.every((p) => contains(area, p))) continue
+			if (group.length < 1 || !group.every((p) => contains(area, p))) continue
 			const moved = places.map((p) =>
 				p.id === id
 					? { ...p, col, row }
@@ -521,7 +512,7 @@ const Widget = memo(function Widget({
 			return
 		}
 		if (e.pointerType !== 'touch') {
-			controls.start(e)
+			controls.start(e.nativeEvent)
 			return
 		}
 		if (press.current || lifted.current) return
@@ -704,6 +695,14 @@ export function DraggableWidgetGrid({
 		latest.current.items = items
 	}, [items])
 
+	useEffect(() => {
+		if (initialItems && !dragging.current) {
+			setItems(initialItems)
+			latest.current.items = initialItems
+			domOrder.current = initialItems.map((item) => item.id)
+		}
+	}, [initialItems])
+
 	const commit = useCallback((next: WidgetItem[]) => {
 		latest.current.items = next
 		setItems(next)
@@ -878,6 +877,7 @@ export function DraggableWidgetGrid({
 	 * exposed through aria-posinset instead.
 	 */
 	const domOrder = useRef(items.map((item) => item.id))
+	domOrder.current = domOrder.current.filter((id) => byId.has(id))
 	for (const item of items)
 		if (!domOrder.current.includes(item.id)) domOrder.current.push(item.id)
 	const placementById = new Map(placements.map((p) => [p.id, p]))

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { InputGroup, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { AgentAvatar } from "@/components/ui/agent-avatar";
 import {
   MessageCircle,
   AudioLines,
@@ -290,12 +291,17 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
             <Message
               key={msg.id}
               align={msg.sender === "user" ? "end" : "start"}
-              className="w-full"
+              className="w-full flex items-start gap-2.5"
             >
-              <MessageContent className={msg.sender === "user" ? "max-w-[80%]" : "max-w-[95%]"}>
+              {msg.sender === "assistant" && (
+                <div className="shrink-0 mt-0.5" title="VAAYU AI Researcher">
+                  <AgentAvatar name="researcher" size={24} />
+                </div>
+              )}
+              <MessageContent className={msg.sender === "user" ? "max-w-[80%]" : "max-w-[90%]"}>
                 <Bubble
                   variant={msg.sender === "user" ? "muted" : "ghost"}
-                  className={msg.sender === "user" ? "rounded-2xl bg-sky-600/90 text-white" : "max-w-full"}
+                  className={msg.sender === "user" ? "rounded-2xl bg-emerald-600 text-white" : "max-w-full"}
                 >
                   <BubbleContent
                     className={
@@ -334,8 +340,8 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
 
         {status === "thinking" && (
           <div className="py-1 px-2">
-            <Marker className="flex items-center gap-2">
-              <Loader2 className="size-3.5 animate-spin text-sky-400" />
+            <Marker className="flex items-center gap-2.5">
+              <AgentAvatar name="researcher" size={20} pulse />
               <MarkerContent>
                 <motion.span
                   className="bg-clip-text text-xs font-medium text-transparent"
@@ -352,7 +358,7 @@ function ChatPanel({ alert }: { alert?: Alert | null }) {
                     ease: "linear",
                   }}
                 >
-                  VAAYU AI synthesizing causal telemetry...
+                  VAAYU AI Researcher synthesizing causal telemetry...
                 </motion.span>
               </MarkerContent>
             </Marker>

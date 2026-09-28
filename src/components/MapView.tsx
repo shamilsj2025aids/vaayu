@@ -293,7 +293,7 @@ export const MapView: React.FC<MapViewProps> = ({
           <button
             type="button"
             onClick={resetDelhiCenter}
-            className="px-2.5 py-1 rounded-lg bg-[#18181b] text-neutral-200 hover:bg-[#27272a] font-medium flex items-center gap-1.5 transition-colors"
+            className="px-2.5 py-1 rounded-lg bg-[#061d15] text-white border border-emerald-700/50 hover:bg-[#0e3d2c] font-medium flex items-center gap-1.5 transition-colors"
           >
             <span className="material-symbols-outlined text-sm text-sky-400">near_me</span>
             Delhi-NCR Center
@@ -309,7 +309,7 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
 
         {/* Dynamic Layer Toggles */}
-        <div className="bg-[#121316]/95 border border-[#27272a] p-2 rounded-xl shadow-lg text-xs space-y-1.5">
+        <div className="bg-[#0a2e21]/95 border border-emerald-600/40 p-2 rounded-xl shadow-lg text-xs space-y-1.5 text-white">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 px-1 flex items-center gap-1">
             <span className="material-symbols-outlined text-xs text-neutral-400">layers</span>
             Spatiotemporal Layers
@@ -318,7 +318,7 @@ export const MapView: React.FC<MapViewProps> = ({
             type="button"
             onClick={() => setShowEdges(!showEdges)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showEdges ? 'bg-[#18181b] text-sky-300 border border-sky-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
+              showEdges ? 'bg-[#14533c] text-white border border-emerald-500/40' : 'text-emerald-200/80 hover:bg-[#061d15]'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -334,7 +334,7 @@ export const MapView: React.FC<MapViewProps> = ({
             type="button"
             onClick={() => setShowFires(!showFires)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showFires ? 'bg-[#18181b] text-amber-300 border border-amber-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
+              showFires ? 'bg-[#14533c] text-amber-300 border border-amber-500/40' : 'text-emerald-200/80 hover:bg-[#061d15]'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -350,7 +350,7 @@ export const MapView: React.FC<MapViewProps> = ({
             type="button"
             onClick={() => setShowPlumes(!showPlumes)}
             className={`w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors ${
-              showPlumes ? 'bg-[#18181b] text-orange-300 border border-orange-500/30' : 'text-neutral-400 hover:bg-[#18181b]'
+              showPlumes ? 'bg-[#14533c] text-orange-300 border border-orange-500/40' : 'text-emerald-200/80 hover:bg-[#061d15]'
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -365,7 +365,7 @@ export const MapView: React.FC<MapViewProps> = ({
       </div>
 
       {/* Floating Bottom-Right AQI Severity Scale Legend */}
-      <div className="absolute bottom-4 right-4 z-10 bg-[#121316]/95 border border-[#27272a] p-3 rounded-2xl shadow-xl text-xs max-w-xs pointer-events-auto">
+      <div className="absolute bottom-4 right-4 z-10 bg-[#0a2e21]/95 border border-emerald-600/40 p-3 rounded-2xl shadow-xl text-xs max-w-xs pointer-events-auto text-white">
         <div className="font-semibold text-white mb-2 flex items-center justify-between">
           <span>CPCB AQI Category Scale</span>
           <span className="text-[10px] text-neutral-400 font-mono">Lead: {formatHourLeadTime(selectedHour)}</span>

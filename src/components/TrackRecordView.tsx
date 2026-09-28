@@ -32,15 +32,15 @@ interface TrackRecordViewProps {
 const trackRecordChartConfig = {
   gnn_mae: {
     label: "VAAYU GNN Residual",
-    color: "#38bdf8",
+    color: "#34d399",
   },
   cams_mae: {
     label: "CAMS Physics Baseline",
-    color: "#a855f7",
+    color: "#ca8a04",
   },
   wrf_mae: {
     label: "WRF-Chem (Govt Model)",
-    color: "#f43f5e",
+    color: "#dc2626",
   },
 } satisfies ChartConfig;
 
@@ -187,7 +187,7 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
               type="button"
               data-active={activeMetricTab === "all"}
               onClick={() => setActiveMetricTab("all")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[95px]"
             >
               <span className="text-[10px] text-neutral-400 font-bold uppercase">Comparison</span>
               <span className="text-xs font-bold text-white">All Models</span>
@@ -196,16 +196,16 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
               type="button"
               data-active={activeMetricTab === "gnn_mae"}
               onClick={() => setActiveMetricTab("gnn_mae")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[100px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[100px]"
             >
-              <span className="text-[10px] text-sky-400 font-bold">VAAYU GNN</span>
+              <span className="text-[10px] text-emerald-300 font-bold flex items-center gap-1"><span className="font-vaayu text-xs font-normal">VAAYU</span><span>GNN</span></span>
               <span className="text-xs font-numbers text-sky-300">14.2 avg</span>
             </button>
             <button
               type="button"
               data-active={activeMetricTab === "cams_mae"}
               onClick={() => setActiveMetricTab("cams_mae")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[100px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[100px]"
             >
               <span className="text-[10px] text-purple-400 font-bold">CAMS Physics</span>
               <span className="text-xs font-numbers text-purple-300">38.6 avg</span>
@@ -214,7 +214,7 @@ export const TrackRecordView: React.FC<TrackRecordViewProps> = ({ records, stats
               type="button"
               data-active={activeMetricTab === "wrf_mae"}
               onClick={() => setActiveMetricTab("wrf_mae")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[100px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[100px]"
             >
               <span className="text-[10px] text-rose-400 font-bold">WRF-Chem</span>
               <span className="text-xs font-numbers text-rose-300">51.4 avg</span>

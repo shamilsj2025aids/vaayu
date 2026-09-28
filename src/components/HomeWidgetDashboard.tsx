@@ -10,6 +10,7 @@ import {
   DataSourceStatus
 } from '../types';
 import { formatVentilation, formatInversionLevel } from '../utils/formatters';
+import { GripVertical } from 'lucide-react';
 
 interface HomeWidgetDashboardProps {
   forecasts: Map<string, StationForecast>;
@@ -105,9 +106,9 @@ const AVAILABLE_WIDGET_CATALOG: {
   { 
     type: 'cams-vs-gnn', 
     label: 'GNN Residual vs CAMS Baseline', 
-    description: 'Day-2 & Day-3 correction delta resolving physics collapse',
+    description: 'Day-2 & Day-3 correction delta resolving baseline underprediction',
     defaultSize: 'wide', 
-    tab: 'CAMS vs GNN',
+    tab: 'Model Comparison',
   },
   { 
     type: 'track-record', 
@@ -134,7 +135,7 @@ const AVAILABLE_WIDGET_CATALOG: {
 
 /**
  * iOS Control Center style Corner Resize Handle
- * Allows dragging outward to expand or inward to shrink, or clicking to toggle
+ * Green and white aesthetic
  */
 const ResizeCornerHandle: React.FC<{
   currentSize: WidgetSize;
@@ -145,7 +146,9 @@ const ResizeCornerHandle: React.FC<{
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (err) {}
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -159,42 +162,8 @@ const ResizeCornerHandle: React.FC<{
     if (!dragStartRef.current) return;
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
-    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
       dragStartRef.current.hasMoved = true;
-    }
-
-    const startSize = dragStartRef.current.size;
-
-    // Drag outward (expanding)
-    if (startSize === 'sm') {
-      if (dx > 45 && dy > 45) {
-        onResize('lg');
-      } else if (dx > 40) {
-        onResize('wide');
-      } else if (dy > 40) {
-        onResize('tall');
-      }
-    } else if (startSize === 'wide') {
-      if (dy > 40) {
-        onResize('lg');
-      } else if (dx < -35) {
-        onResize('sm');
-      }
-    } else if (startSize === 'tall') {
-      if (dx > 40) {
-        onResize('lg');
-      } else if (dy < -35) {
-        onResize('sm');
-      }
-    } else if (startSize === 'lg') {
-      // Drag inward (shrinking)
-      if (dx < -45 && dy < -45) {
-        onResize('sm');
-      } else if (dx < -35) {
-        onResize('tall');
-      } else if (dy < -35) {
-        onResize('wide');
-      }
     }
   };
 
@@ -204,15 +173,48 @@ const ResizeCornerHandle: React.FC<{
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch (err) {}
 
-    // If simply tapped/clicked without substantial drag, cycle to next size
-    if (!dragStartRef.current.hasMoved) {
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    const startSize = dragStartRef.current.size;
+
+    if (dragStartRef.current.hasMoved) {
+      if (startSize === 'sm') {
+        if (dx > 35 && dy > 35) {
+          onResize('lg');
+        } else if (dx > 30) {
+          onResize('wide');
+        } else if (dy > 30) {
+          onResize('tall');
+        }
+      } else if (startSize === 'wide') {
+        if (dy > 35) {
+          onResize('lg');
+        } else if (dx < -30) {
+          onResize('sm');
+        }
+      } else if (startSize === 'tall') {
+        if (dx > 30) {
+          onResize('lg');
+        } else if (dy < -30) {
+          onResize('sm');
+        }
+      } else if (startSize === 'lg') {
+        if (dx < -35 && dy < -35) {
+          onResize('sm');
+        } else if (dx < -30) {
+          onResize('tall');
+        } else if (dy < -30) {
+          onResize('wide');
+        }
+      }
+    } else {
       const cycleMap: Record<WidgetSize, WidgetSize> = {
         sm: 'wide',
         wide: 'lg',
-        lg: 'tall',
+        lg: 'sm',
         tall: 'sm',
       };
-      onResize(cycleMap[currentSize]);
+      onResize(cycleMap[currentSize] || 'sm');
     }
 
     dragStartRef.current = null;
@@ -226,16 +228,15 @@ const ResizeCornerHandle: React.FC<{
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      title="Drag outward to enlarge, inward to shrink (or click to toggle size)"
+      title="Click to cycle size, or drag to resize"
       className={`absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-end justify-end p-1.5 z-30 group touch-none select-none transition-all ${
         isDragging ? 'scale-125' : 'hover:scale-110'
       }`}
     >
-      {/* iOS style curved corner resize arc */}
-      <div className={`w-3 h-3 rounded-br-sm border-r-2 border-b-2 transition-all ${
+      <div className={`w-3.5 h-3.5 rounded-br-sm border-r-2 border-b-2 transition-all ${
         isDragging
-          ? 'border-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]'
-          : 'border-white/30 group-hover:border-white'
+          ? 'border-white shadow-[0_0_8px_rgba(255,255,255,0.9)] scale-110'
+          : 'border-emerald-400 group-hover:border-white'
       }`} />
     </div>
   );
@@ -256,7 +257,7 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   onSelectStation,
 }) => {
   const [widgets, setWidgets] = useState<CustomWidget[]>(() => {
-    const saved = localStorage.getItem('vaayu_home_widgets');
+    const saved = localStorage.getItem('aeris_home_widgets') || localStorage.getItem('vaayu_home_widgets');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -269,11 +270,50 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   });
 
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
 
   const updateWidgets = (newWidgets: CustomWidget[]) => {
     const capped = newWidgets.slice(0, MAX_WIDGETS);
     setWidgets(capped);
-    localStorage.setItem('vaayu_home_widgets', JSON.stringify(capped));
+    localStorage.setItem('aeris_home_widgets', JSON.stringify(capped));
+  };
+
+  const moveWidget = (id: string, direction: 'left' | 'right') => {
+    const idx = widgets.findIndex(w => w.id === id);
+    if (idx === -1) return;
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= widgets.length) return;
+    const updated = [...widgets];
+    const [moved] = updated.splice(idx, 1);
+    updated.splice(targetIdx, 0, moved);
+    updateWidgets(updated);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedWidgetId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedWidgetId;
+    setDraggedWidgetId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const sourceIdx = widgets.findIndex(w => w.id === sourceId);
+    const targetIdx = widgets.findIndex(w => w.id === targetId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+
+    const updated = [...widgets];
+    const [moved] = updated.splice(sourceIdx, 1);
+    updated.splice(targetIdx, 0, moved);
+    updateWidgets(updated);
   };
 
   const activeAlert = alerts[0];
@@ -327,20 +367,82 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
   };
 
   const renderWidgetContent = (item: CustomWidget, size: WidgetSize) => {
+    const isDragged = draggedWidgetId === item.id;
     return (
-      <div className="relative w-full h-full p-4 flex flex-col justify-between bg-[#121316] text-[#fafafa] select-none font-sans">
-        {/* Widget Top Bar: Clean Title & Minimalist Close Button */}
-        <div className="flex items-center justify-between gap-1.5 border-b border-[#27272a] pb-2 mb-2">
-          <div className="min-w-0">
-            <span className="text-xs font-bold tracking-wide text-neutral-200 uppercase truncate block">
+      <div 
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, item.id)}
+        className={`relative w-full h-full p-4 sm:p-5 flex flex-col justify-between bg-[#0a2e21] text-white rounded-2xl select-none font-sans border-2 transition-all shadow-lg ${
+          isDragged 
+            ? 'border-white bg-[#0e3d2c] opacity-60 scale-95' 
+            : 'border-emerald-600/40 hover:border-emerald-500/70 shadow-black/25'
+        }`}
+      >
+        {/* Widget Top Bar: Grip, Title, Reorder Arrows, Size Toggle, Close */}
+        <div 
+          draggable={true}
+          onDragStart={(e) => handleDragStart(e, item.id)}
+          onDragEnd={() => setDraggedWidgetId(null)}
+          className="flex items-center justify-between gap-1.5 border-b border-[#134e38] pb-2.5 mb-2.5 cursor-grab active:cursor-grabbing"
+          title="Drag header to reorder, or use controls on the right"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="text-emerald-400 hover:text-white shrink-0">
+              <GripVertical className="w-4 h-4" />
+            </div>
+
+            <span className="text-xs sm:text-sm font-bold tracking-wide text-white uppercase truncate block">
               {item.label}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0" data-no-drag>
-            <span className="text-[9px] font-numbers text-neutral-500 uppercase px-1">
-              {item.size}
-            </span>
+            {/* Quick 1-Click Move Left/Right */}
+            <div className="flex items-center bg-[#061d15] border border-emerald-700/60 rounded-lg p-0.5">
+              <button
+                type="button"
+                data-no-drag
+                onClick={(e) => { e.stopPropagation(); moveWidget(item.id, 'left'); }}
+                title="Move earlier"
+                className="w-5 h-5 rounded hover:bg-[#0e3d2c] text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center transition-colors"
+              >
+                &larr;
+              </button>
+              <button
+                type="button"
+                data-no-drag
+                onClick={(e) => { e.stopPropagation(); moveWidget(item.id, 'right'); }}
+                title="Move later"
+                className="w-5 h-5 rounded hover:bg-[#0e3d2c] text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center transition-colors"
+              >
+                &rarr;
+              </button>
+            </div>
+
+            {/* Direct 1-Click Size Switcher */}
+            <div className="flex items-center bg-[#061d15] border border-emerald-700/60 rounded-lg p-0.5">
+              {(['sm', 'wide', 'lg'] as WidgetSize[]).map((sz) => (
+                <button
+                  key={sz}
+                  type="button"
+                  data-no-drag
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setWidgetSize(item.id, sz);
+                  }}
+                  title={`Resize to ${sz}`}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${
+                    item.size === sz
+                      ? 'bg-white text-[#072118] font-black shadow-xs'
+                      : 'text-emerald-300/80 hover:bg-[#0e3d2c] hover:text-white'
+                  }`}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+
+            {/* Remove Widget Button */}
             <button
               type="button"
               data-no-drag
@@ -349,7 +451,7 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                 removeWidget(item.id);
               }}
               title="Remove widget"
-              className="w-5 h-5 rounded-md bg-[#18181b] hover:bg-rose-950/60 border border-[#27272a] hover:border-rose-800/60 text-neutral-400 hover:text-rose-300 text-xs font-bold transition-colors flex items-center justify-center leading-none"
+              className="w-5 h-5 rounded-lg bg-[#061d15] hover:bg-rose-950/70 border border-emerald-700/60 hover:border-rose-700 text-emerald-300 hover:text-rose-300 text-xs font-bold transition-colors flex items-center justify-center leading-none"
             >
               &times;
             </button>
@@ -360,21 +462,21 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
         <div className="flex-1 flex flex-col justify-between overflow-hidden">
           {/* 1. Proactive Alert */}
           {item.type === 'proactive-alert' && activeAlert && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-300 px-2 py-0.5 rounded bg-rose-950/70 border border-rose-800">
+                <span className="text-xs font-black text-rose-300 px-2.5 py-1 rounded-lg bg-rose-950/60 border border-rose-800 font-mono">
                   {activeAlert.grap_stage}
                 </span>
-                <span className="text-[11px] font-numbers text-neutral-400">{activeAlert.start_time}</span>
+                <span className="text-xs font-black font-mono text-white">{activeAlert.start_time}</span>
               </div>
-              <p className="text-xs text-white line-clamp-2">
+              <p className="text-xs sm:text-sm text-white font-medium line-clamp-2 leading-relaxed">
                 {activeAlert.subtitle}
               </p>
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onOpenAlert(activeAlert)}
-                className="text-[11px] text-sky-400 hover:underline font-bold pt-1 text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left inline-flex items-center gap-1"
               >
                 View Causal Explanation ("The Why") &rarr;
               </button>
@@ -384,18 +486,20 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {/* 2. Inversion Gauge */}
           {item.type === 'inversion-gauge' && (
             <div className="space-y-2">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-numbers text-amber-400">{currentInv?.score || 55}</span>
-                <span className="text-xs text-neutral-400">/ 100</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-4xl sm:text-5xl font-black font-numbers text-amber-400 tracking-tight">
+                  {currentInv?.score || 55}
+                </span>
+                <span className="text-sm font-bold text-[#a7d0bf] font-mono">/ 100</span>
               </div>
-              <div className="text-xs font-bold text-neutral-200">
+              <div className="text-xs sm:text-sm font-bold text-white">
                 {invLevel.label}
               </div>
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onNavigateTab('inversion-fire')}
-                className="text-[11px] text-sky-400 hover:underline font-bold mt-auto text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold mt-auto text-left"
               >
                 Open Inversion Telemetry &rarr;
               </button>
@@ -405,15 +509,19 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {/* 3. Ventilation Card */}
           {item.type === 'ventilation-card' && (
             <div className="space-y-2">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-numbers text-white">{(currentInv?.ventilation || 2800).toLocaleString()}</span>
-                <span className="text-xs text-neutral-400">m²/s</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-4xl sm:text-5xl font-black font-numbers text-white tracking-tight">
+                  {(currentInv?.ventilation || 2800).toLocaleString()}
+                </span>
+                <span className="text-sm font-bold text-[#a7d0bf] font-mono">m²/s</span>
               </div>
-              <span className={`px-2 py-0.5 rounded text-[11px] font-bold inline-block ${vent.badgeColor}`}>
-                {vent.label}
-              </span>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Ceiling: <span className="font-numbers text-white">{currentInv?.pblh || 320}</span>m
+              <div>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${vent.badgeColor}`}>
+                  {vent.label}
+                </span>
+              </div>
+              <p className="text-xs text-[#a7d0bf] mt-1">
+                Ceiling: <span className="font-numbers font-black text-white text-sm">{currentInv?.pblh || 320}</span> m
               </p>
             </div>
           )}
@@ -421,34 +529,34 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {/* 4. Spatial Map Overview */}
           {item.type === 'map-overview' && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-[#27272a]">
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">Stations</span>
-                  <span className="font-numbers text-emerald-400 text-sm">56 / 56 CPCB</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Stations</span>
+                  <span className="font-numbers font-black text-white text-sm sm:text-base">56 / 56 CPCB</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-[#27272a]">
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">Fire Nodes</span>
-                  <span className="font-numbers text-amber-400 text-sm">5 Clusters</span>
+                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Fire Nodes</span>
+                  <span className="font-numbers font-black text-amber-400 text-sm sm:text-base">5 Clusters</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-[#27272a]">
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">Vectors</span>
-                  <span className="font-numbers text-sky-400 text-sm">315° NW</span>
+                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Vectors</span>
+                  <span className="font-numbers font-black text-[#86efac] text-sm sm:text-base">315° NW</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-[#27272a]">
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">Lead Horizon</span>
-                  <span className="font-numbers text-white text-sm">0h to 72h</span>
+                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] block text-[10px] uppercase font-bold">Lead Horizon</span>
+                  <span className="font-numbers font-black text-white text-sm sm:text-base">0h to 72h</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs sm:text-sm text-[#a7d0bf]">
                   Interactive spatiotemporal sensor grid with wind dispersion overlay.
                 </p>
                 <button
                   type="button"
                   data-no-drag
                   onClick={() => onNavigateTab('map')}
-                  className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-100 text-[#072118] text-xs font-bold shrink-0 transition-all shadow-sm"
                 >
                   Open Map &rarr;
                 </button>
@@ -461,23 +569,23 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-2xl font-numbers text-orange-400">{totalFRP}</span>
-                  <span className="text-xs text-neutral-400 ml-1">MW Fire Power</span>
+                  <span className="text-3xl sm:text-4xl font-black font-numbers text-amber-400">{totalFRP}</span>
+                  <span className="text-xs font-bold text-[#a7d0bf] ml-1">MW Fire Power</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-base font-numbers text-white">{fireHotspots.length}</span>
-                  <span className="text-xs text-neutral-400 ml-1">Hotspots</span>
+                  <span className="text-xl sm:text-2xl font-black font-numbers text-white">{fireHotspots.length}</span>
+                  <span className="text-xs font-bold text-[#a7d0bf] ml-1">Hotspots</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-xs pt-1 text-neutral-300">
-                <span>Punjab: <strong className="font-numbers text-white">{fireHotspots.filter(f => f.state === 'Punjab').length}</strong></span>
-                <span>Haryana: <strong className="font-numbers text-white">{fireHotspots.filter(f => f.state === 'Haryana').length}</strong></span>
+              <div className="flex items-center justify-between text-xs pt-1.5 text-white bg-[#061d15] p-2.5 rounded-xl border border-emerald-700/50">
+                <span>Punjab: <strong className="font-numbers font-black text-[#86efac] text-sm">{fireHotspots.filter(f => f.state === 'Punjab').length}</strong></span>
+                <span>Haryana: <strong className="font-numbers font-black text-[#86efac] text-sm">{fireHotspots.filter(f => f.state === 'Haryana').length}</strong></span>
               </div>
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onNavigateTab('inversion-fire')}
-                className="text-[11px] text-sky-400 hover:underline font-bold pt-1 text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
               >
                 Track Plume Trajectory &rarr;
               </button>
@@ -489,29 +597,29 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
             <div className="space-y-2">
               {firePlumes[0] ? (
                 <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center justify-between text-xs sm:text-sm mb-1.5">
                     <span className="text-white font-bold">{firePlumes[0].source_name}</span>
-                    <span className="text-amber-400 font-numbers">+{firePlumes[0].eta_delhi_hours}h ETA</span>
+                    <span className="text-amber-400 font-numbers font-black">+{firePlumes[0].eta_delhi_hours}h ETA</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-[#18181b] border border-[#27272a]">
-                      <span className="text-[10px] text-neutral-400 block font-bold">Speed</span>
-                      <span className="font-numbers text-white">{firePlumes[0].current_wind_speed_kmh} km/h</span>
+                    <div className="p-2.5 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                      <span className="text-[10px] text-[#a7d0bf] block font-bold">Speed</span>
+                      <span className="font-numbers font-black text-white text-sm">{firePlumes[0].current_wind_speed_kmh} km/h</span>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#18181b] border border-[#27272a]">
-                      <span className="text-[10px] text-neutral-400 block font-bold">Bearing</span>
-                      <span className="font-numbers text-sky-300">{firePlumes[0].corridor_bearing_deg}° NW</span>
+                    <div className="p-2.5 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                      <span className="text-[10px] text-[#a7d0bf] block font-bold">Bearing</span>
+                      <span className="font-numbers font-black text-[#86efac] text-sm">{firePlumes[0].corridor_bearing_deg}° NW</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-neutral-400">No active fire conduits detected currently.</p>
+                <p className="text-xs sm:text-sm text-[#a7d0bf]">No active fire conduits detected currently.</p>
               )}
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onNavigateTab('inversion-fire')}
-                className="text-[11px] text-sky-400 hover:underline font-bold pt-1 text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
               >
                 View Plume Vectors &rarr;
               </button>
@@ -521,27 +629,27 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {/* 7. CAMS vs GNN Residual */}
           {item.type === 'cams-vs-gnn' && (
             <div className="space-y-2">
-              <div className="flex items-baseline justify-between text-xs">
-                <span className="text-slate-300 font-bold">Anand Vihar (+48h)</span>
-                <span className="text-purple-300 font-numbers">+68 µg/m³</span>
+              <div className="flex items-baseline justify-between text-xs sm:text-sm">
+                <span className="text-white font-bold">Anand Vihar (+48h)</span>
+                <span className="text-[#86efac] font-numbers font-black text-sm">+68 µg/m³</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-[#18181b] border border-[#27272a]">
-                  <span className="text-neutral-400 block text-[10px] font-bold">CAMS Baseline</span>
-                  <span className="text-lg font-numbers text-rose-400 line-through">245</span>
-                  <span className="text-[10px] text-rose-400 block">Underpredicts</span>
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60">
+                  <span className="text-rose-300 block text-[10px] font-bold">CAMS Baseline</span>
+                  <span className="text-lg font-numbers font-black text-rose-400 line-through">245</span>
+                  <span className="text-[10px] text-rose-300 font-bold block">Underpredicts</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-purple-950/20 border border-purple-900/40">
-                  <span className="text-neutral-400 block text-[10px] font-bold">GNN Residual</span>
-                  <span className="text-lg font-numbers text-sky-400">313</span>
-                  <span className="text-[10px] text-sky-300 block">Fire Corrected</span>
+                <div className="p-3 rounded-xl bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] block text-[10px] font-bold">GNN Forecast</span>
+                  <span className="text-xl font-numbers font-black text-[#86efac]">313</span>
+                  <span className="text-[10px] text-[#86efac] font-bold block">Calibrated</span>
                 </div>
               </div>
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onNavigateTab('comparison')}
-                className="text-[11px] text-purple-400 hover:underline font-bold pt-1 text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold pt-1 text-left"
               >
                 Compare Model Curves &rarr;
               </button>
@@ -552,17 +660,19 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {item.type === 'track-record' && (
             <div className="space-y-2">
               <div>
-                <span className="text-3xl font-numbers text-emerald-400">{stat48?.extreme_event_recall || 92}%</span>
-                <span className="text-xs text-neutral-400 block">Severe Event Recall (+48h)</span>
+                <span className="text-4xl sm:text-5xl font-black font-numbers text-[#86efac] tracking-tight">
+                  {stat48?.extreme_event_recall || 92}%
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-white block mt-0.5">Severe Event Recall (+48h)</span>
               </div>
-              <div className="text-xs text-neutral-300 pt-1 border-t border-[#27272a]">
-                MAE: <span className="font-numbers text-sky-400">{stat48?.gnn_mae || 14.2}</span> vs CAMS <span className="font-numbers text-rose-400">{stat48?.cams_mae || 38.6}</span>
+              <div className="text-xs sm:text-sm text-[#a7d0bf] pt-1.5 border-t border-[#134e38]">
+                MAE: <span className="font-numbers font-black text-[#86efac]">{stat48?.gnn_mae || 14.2}</span> vs CAMS <span className="font-numbers font-black text-rose-400">{stat48?.cams_mae || 38.6}</span>
               </div>
               <button
                 type="button"
                 data-no-drag
                 onClick={() => onNavigateTab('track-record')}
-                className="text-[11px] text-sky-400 hover:underline font-bold mt-auto text-left"
+                className="text-xs sm:text-sm text-[#86efac] hover:text-white hover:underline font-bold mt-auto text-left"
               >
                 Inspect Audit Log &rarr;
               </button>
@@ -582,17 +692,17 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                     key={i} 
                     data-no-drag
                     onClick={() => onSelectStation('dl-anand-vihar')}
-                    className="flex items-center justify-between p-2 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#061d15] hover:bg-[#0e3d2c] border border-emerald-700/50 cursor-pointer transition-colors"
                   >
-                    <span className="text-xs font-bold text-white">{st.name}</span>
+                    <span className="text-xs sm:text-sm font-bold text-white">{st.name}</span>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="font-numbers text-rose-400">{st.aqi} AQI</span>
-                      <span className="font-numbers text-[10px] text-amber-400">({st.change})</span>
+                      <span className="font-numbers font-black text-rose-400 text-sm sm:text-base">{st.aqi} AQI</span>
+                      <span className="font-numbers font-black text-amber-400 text-xs">({st.change})</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-neutral-400 text-right">
+              <p className="text-[11px] text-[#a7d0bf] text-right">
                 Click station to inspect details
               </p>
             </div>
@@ -601,28 +711,28 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           {/* 10. System Freshness */}
           {item.type === 'system-freshness' && (
             <div className="space-y-2">
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-400">CPCB CAAQMS</span>
-                  <span className="text-emerald-400 font-bold">Online</span>
+              <div className="space-y-2 text-xs sm:text-sm">
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] font-medium">CPCB CAAQMS</span>
+                  <span className="text-[#86efac] font-mono font-black">Online</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-400">NASA FIRMS</span>
-                  <span className="text-emerald-400 font-bold">Hourly Poll</span>
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] font-medium">NASA FIRMS</span>
+                  <span className="text-[#86efac] font-mono font-black">Hourly Poll</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-400">CAMS Met</span>
-                  <span className="text-neutral-300 font-bold">Synchronized</span>
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[#061d15] border border-emerald-700/50">
+                  <span className="text-[#a7d0bf] font-medium">CAMS Met</span>
+                  <span className="text-white font-mono font-black">Synchronized</span>
                 </div>
               </div>
-              <p className="text-[10px] text-neutral-400 pt-1 border-t border-[#27272a]">
-                All spatiotemporal inputs validated.
+              <p className="text-xs text-[#a7d0bf] pt-1 border-t border-[#134e38]">
+                All telemetry feeds validated.
               </p>
             </div>
           )}
         </div>
 
-        {/* iPhone Control Center style Corner Resize Handle */}
+        {/* Corner Resize Handle */}
         <ResizeCornerHandle
           currentSize={item.size}
           onResize={(newSize) => setWidgetSize(item.id, newSize)}
@@ -633,42 +743,42 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
 
   return (
     <div className="space-y-5 font-sans">
-      {/* Detached Separate Text Boxes Toolbar (replacing monolithic header) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      {/* Top Toolbar in Green & White with Green Stroke */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
         {/* Box 1: Title Box */}
-        <div className="md:col-span-2 p-4 rounded-2xl bg-[#121316] border border-[#27272a] flex flex-col justify-center">
-          <h2 className="font-heading text-2xl text-white">Central Telemetry Overview</h2>
-          <p className="text-xs text-neutral-400 mt-1">
-            Drag to rearrange. Pull bottom-right corner inward to shrink, outward to enlarge (iPhone style).
+        <div className="md:col-span-2 p-5 rounded-2xl bg-[#0a2e21] border-2 border-emerald-600/40 shadow-lg text-white flex flex-col justify-center">
+          <h2 className="font-heading text-2xl sm:text-3xl text-white">Central Telemetry Overview</h2>
+          <p className="text-xs sm:text-sm text-[#a7d0bf] mt-1">
+            Drag by header or use arrows to rearrange. Click size pills ([sm] [wide] [lg]) or corner handle to resize.
           </p>
         </div>
 
         {/* Box 2: Capacity & Presets Box */}
-        <div className="p-4 rounded-2xl bg-[#121316] border border-[#27272a] flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[#0a2e21] border-2 border-emerald-600/40 shadow-lg text-white flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-neutral-400">Capacity</span>
-            <span className="font-numbers text-xs text-sky-400">{widgets.length} / {MAX_WIDGETS}</span>
+            <span className="text-xs uppercase font-bold text-[#a7d0bf]">Board Capacity</span>
+            <span className="font-numbers font-black text-base text-white">{widgets.length} / {MAX_WIDGETS}</span>
           </div>
-          <div className="flex items-center gap-1 mt-2">
-            <span className="text-[10px] text-neutral-500 font-bold mr-1">Presets:</span>
+          <div className="flex items-center gap-1.5 mt-2.5">
+            <span className="text-xs text-[#a7d0bf] font-bold mr-1">Presets:</span>
             <button
               type="button"
               onClick={() => applyPreset('balanced')}
-              className="px-2 py-0.5 rounded bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-[10px] font-bold text-neutral-300"
+              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
             >
               Balanced
             </button>
             <button
               type="button"
               onClick={() => applyPreset('meteo')}
-              className="px-2 py-0.5 rounded bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-[10px] font-bold text-neutral-300"
+              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
             >
               Meteo
             </button>
             <button
               type="button"
               onClick={() => applyPreset('taskforce')}
-              className="px-2 py-0.5 rounded bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-[10px] font-bold text-neutral-300"
+              className="px-2.5 py-1 rounded-lg bg-[#0e3d2c] hover:bg-[#14533c] border border-emerald-500/50 text-xs font-bold text-white transition-colors"
             >
               Action
             </button>
@@ -679,37 +789,37 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
         <button
           type="button"
           onClick={() => setIsOrganizerOpen(true)}
-          className="p-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm flex flex-col justify-center items-center gap-1 transition-all shadow-sm"
+          className="p-5 rounded-2xl bg-white hover:bg-[#e6f4ea] text-[#072118] border-2 border-white font-bold text-sm sm:text-base flex flex-col justify-center items-center gap-1 transition-all shadow-md cursor-pointer"
         >
-          <span>Manage Widgets</span>
-          <span className="text-[11px] font-normal text-sky-100">
+          <span className="font-black">Manage Widgets</span>
+          <span className="text-xs font-semibold text-[#0b3b2a]">
             {MAX_WIDGETS - widgets.length} slots available
           </span>
         </button>
       </div>
 
-      {/* Widget Catalog Modal / Drawer (when open) */}
+      {/* Widget Catalog Modal / Drawer */}
       {isOrganizerOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121316] border border-[#27272a] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 font-sans">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0a2e21] border-2 border-emerald-600/50 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 font-sans text-white">
             {/* Catalog Header */}
-            <div className="p-5 border-b border-[#27272a] flex items-center justify-between">
+            <div className="p-5 border-b border-[#134e38] bg-[#072118] flex items-center justify-between">
               <div>
                 <h3 className="font-heading text-2xl text-white">Manage Dashboard Widgets</h3>
-                <p className="text-xs text-neutral-400 mt-1">
+                <p className="text-xs sm:text-sm text-[#a7d0bf] mt-1">
                   Choose widgets for your workspace. Maximum {MAX_WIDGETS} widgets allowed on the board.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-1 rounded-lg text-xs font-numbers font-bold bg-[#18181b] border border-[#27272a] text-sky-300">
+                <span className="px-3 py-1.5 rounded-xl text-xs font-numbers font-black bg-[#061d15] border border-emerald-600/50 text-white">
                   {widgets.length} / {MAX_WIDGETS}
                 </span>
 
                 <button
                   type="button"
                   onClick={() => setIsOrganizerOpen(false)}
-                  className="px-3 py-1.5 rounded-xl bg-[#18181b] hover:bg-[#27272a] text-neutral-300 hover:text-white border border-[#27272a] text-xs font-bold"
+                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-[#072118] font-bold text-xs transition-colors"
                 >
                   Close
                 </button>
@@ -718,13 +828,13 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
 
             {/* Capacity Alert if full */}
             {widgets.length >= MAX_WIDGETS && (
-              <div className="bg-amber-950/30 border-b border-amber-900/40 px-5 py-2.5 text-xs text-amber-300 font-bold">
+              <div className="bg-amber-950/80 border-b border-amber-700/60 px-5 py-2.5 text-xs text-amber-200 font-bold">
                 Maximum capacity reached ({MAX_WIDGETS} / {MAX_WIDGETS} widgets). Remove an active widget before adding another.
               </div>
             )}
 
             {/* Catalog Grid */}
-            <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-[#061d15]">
               {AVAILABLE_WIDGET_CATALOG.map((cat) => {
                 const activeInstance = widgets.find(w => w.type === cat.type);
                 const isAdded = Boolean(activeInstance);
@@ -733,28 +843,28 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                 return (
                   <div
                     key={cat.type}
-                    className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-colors ${
+                    className={`p-4 rounded-xl border-2 flex flex-col justify-between gap-3 transition-colors ${
                       isAdded
-                        ? 'bg-[#18181b] border-sky-500/40'
-                        : 'bg-[#141518] border-[#27272a] hover:border-neutral-700'
+                        ? 'bg-[#0e3d2c] border-emerald-400 shadow-md'
+                        : 'bg-[#0a2e21] border-emerald-700/50 hover:border-emerald-500'
                     }`}
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-white">
+                        <span className="font-bold text-xs sm:text-sm text-white">
                           {cat.label}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#18181b] border border-[#27272a] text-neutral-400 font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-[#86efac] font-bold uppercase">
                           {cat.tab}
                         </span>
                       </div>
-                      <p className="text-xs text-neutral-400 leading-relaxed">
+                      <p className="text-xs text-[#a7d0bf] leading-relaxed">
                         {cat.description}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-[#27272a]/60">
-                      <span className="text-[10px] text-neutral-500 font-numbers uppercase">
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#134e38]">
+                      <span className="text-xs text-[#a7d0bf] font-mono font-bold uppercase">
                         Default {cat.defaultSize}
                       </span>
 
@@ -762,7 +872,7 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                         <button
                           type="button"
                           onClick={() => removeWidget(activeInstance!.id)}
-                          className="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800 text-rose-300 text-xs font-bold transition-colors"
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-700 text-rose-200 text-xs font-bold transition-colors"
                         >
                           Remove
                         </button>
@@ -771,10 +881,10 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
                           type="button"
                           disabled={isFull}
                           onClick={() => addWidget(cat)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                             isFull
                               ? 'bg-neutral-800 border border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : 'bg-sky-600 hover:bg-sky-500 text-white shadow-xs'
+                              : 'bg-white hover:bg-emerald-100 text-[#072118] shadow-sm font-black'
                           }`}
                         >
                           {isFull ? 'Limit Reached' : 'Add to Board'}
@@ -787,14 +897,14 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#27272a] bg-[#141518] flex items-center justify-between">
-              <span className="text-xs text-neutral-400">
-                Tip: Pull bottom-right corner inward to shrink, outward to enlarge.
+            <div className="p-4 border-t border-[#134e38] bg-[#072118] flex items-center justify-between">
+              <span className="text-xs text-[#a7d0bf]">
+                Tip: Pull bottom-right corner or click size pills ([sm] [wide] [lg]) to resize.
               </span>
               <button
                 type="button"
                 onClick={() => setIsOrganizerOpen(false)}
-                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
+                className="px-5 py-2 rounded-xl bg-white hover:bg-emerald-100 text-[#072118] font-black text-xs shadow-sm"
               >
                 Done
               </button>
@@ -812,21 +922,23 @@ export const HomeWidgetDashboard: React.FC<HomeWidgetDashboardProps> = ({
           editable={true}
           maxColumns={4}
           cellSize={240}
-          gap={12}
+          gap={14}
           radius={16}
         />
       </div>
 
-      {/* Optional Add Widget Empty Slot at bottom if under max */}
+      {/* Add Widget Empty Slot Button */}
       {widgets.length < MAX_WIDGETS && (
         <button
           type="button"
           onClick={() => setIsOrganizerOpen(true)}
-          className="w-full py-4 border-2 border-dashed border-[#27272a] hover:border-sky-500/50 rounded-2xl flex items-center justify-center gap-2 text-neutral-400 hover:text-sky-300 bg-[#121316]/40 hover:bg-[#18181b] transition-all text-xs font-bold font-sans"
+          className="w-full py-4 border-2 border-dashed border-emerald-600/50 hover:border-emerald-400 rounded-2xl flex items-center justify-center gap-2 text-emerald-200 hover:text-white bg-[#0a2e21]/50 hover:bg-[#0a2e21] transition-all text-xs sm:text-sm font-bold font-sans shadow-sm"
         >
-          <span>Add Widget to Board ({MAX_WIDGETS - widgets.length} of {MAX_WIDGETS} slots remaining)</span>
+          <span>+ Add Widget to Board ({MAX_WIDGETS - widgets.length} of {MAX_WIDGETS} slots remaining)</span>
         </button>
       )}
     </div>
   );
 };
+
+export default HomeWidgetDashboard;

@@ -40,22 +40,22 @@ interface ModelComparisonViewProps {
 const multiModelConfig = {
   gnn_pm25: {
     label: "VAAYU GNN Residual",
-    color: "#38bdf8",
+    color: "#34d399",
   },
   cams_pm25: {
     label: "CAMS Physics Baseline",
-    color: "#a855f7",
+    color: "#ca8a04",
   },
   wrf_chem_pm25: {
     label: "Govt WRF-Chem Benchmark",
-    color: "#f43f5e",
+    color: "#dc2626",
   },
 } satisfies ChartConfig;
 
 const residualConfig = {
   residual_correction: {
     label: "Learned Residual Correction (Δ PM2.5)",
-    color: "#8b5cf6",
+    color: "#16a34a",
   },
 } satisfies ChartConfig;
 
@@ -122,7 +122,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
       {/* Title & Core Scientific Value Banner */}
       <div className="bg-card p-5 rounded-2xl border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-2xl text-white">
+          <h2 className="font-heading text-2xl text-foreground">
             Physics Baseline vs. GNN Residual Correction
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
@@ -242,7 +242,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={activeModelTab === "all"}
               onClick={() => setActiveModelTab("all")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[100px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[100px]"
             >
               <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Mode</span>
               <span className="text-xs font-bold text-white">All Models</span>
@@ -252,9 +252,9 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={activeModelTab === "gnn_pm25"}
               onClick={() => setActiveModelTab("gnn_pm25")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[110px]"
             >
-              <span className="text-[10px] text-sky-400 font-bold">VAAYU GNN</span>
+              <span className="text-[10px] text-emerald-300 font-bold flex items-center gap-1"><span className="font-vaayu text-xs font-normal">VAAYU</span><span>GNN</span></span>
               <span className="text-sm font-numbers text-sky-300">{modelStats.gnn} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
             </button>
 
@@ -262,7 +262,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={activeModelTab === "cams_pm25"}
               onClick={() => setActiveModelTab("cams_pm25")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[110px]"
             >
               <span className="text-[10px] text-purple-400 font-bold">CAMS Physics</span>
               <span className="text-sm font-numbers text-purple-300">{modelStats.cams} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
@@ -272,7 +272,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={activeModelTab === "wrf_chem_pm25"}
               onClick={() => setActiveModelTab("wrf_chem_pm25")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[110px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[110px]"
             >
               <span className="text-[10px] text-rose-400 font-bold">WRF-Chem</span>
               <span className="text-sm font-numbers text-rose-300">{modelStats.wrf} <span className="text-[10px] font-normal text-neutral-400 font-sans">µg/m³</span></span>
@@ -356,7 +356,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={residualHorizon === "all"}
               onClick={() => setResidualHorizon("all")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[95px]"
             >
               <span className="text-[10px] text-neutral-400 uppercase font-bold">Horizon</span>
               <span className="text-xs font-bold text-white">Full 72h</span>
@@ -365,7 +365,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={residualHorizon === "d1"}
               onClick={() => setResidualHorizon("d1")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[95px]"
             >
               <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 1</span>
               <span className="text-xs font-bold text-white font-numbers">0–24h</span>
@@ -374,7 +374,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={residualHorizon === "d2"}
               onClick={() => setResidualHorizon("d2")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[95px]"
             >
               <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 2</span>
               <span className="text-xs font-bold text-purple-300 font-numbers">24–48h</span>
@@ -383,7 +383,7 @@ export const ModelComparisonView: React.FC<ModelComparisonViewProps> = ({ foreca
               type="button"
               data-active={residualHorizon === "d3"}
               onClick={() => setResidualHorizon("d3")}
-              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#1e2025] hover:bg-[#18191d] transition-colors min-w-[95px]"
+              className="flex flex-1 flex-col justify-center gap-0.5 px-4 py-3 text-left data-[active=true]:bg-[#14533c] hover:bg-[#0e3d2c] transition-colors min-w-[95px]"
             >
               <span className="text-[10px] text-neutral-400 uppercase font-bold">Day 3</span>
               <span className="text-xs font-bold text-rose-300 font-numbers">48–72h</span>

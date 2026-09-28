@@ -9,36 +9,44 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#09090b',
-        foreground: '#fafafa',
+        background: '#f8faf9',
+        foreground: '#0c1212',
         card: {
-          DEFAULT: '#121316',
-          foreground: '#fafafa',
+          DEFAULT: '#ffffff',
+          foreground: '#0c1212',
         },
         popover: {
-          DEFAULT: '#121316',
-          foreground: '#fafafa',
+          DEFAULT: '#ffffff',
+          foreground: '#0c1212',
         },
         primary: {
-          DEFAULT: '#2563eb',
+          DEFAULT: '#0b3b2a',
+          hover: '#14573f',
           foreground: '#ffffff',
         },
         secondary: {
-          DEFAULT: '#27272a',
-          foreground: '#f4f4f5',
+          DEFAULT: '#f0fdf4',
+          foreground: '#0b3b2a',
         },
         muted: {
-          DEFAULT: '#1c1d22',
-          foreground: '#a1a1aa',
+          DEFAULT: '#f1f6f3',
+          foreground: '#4a5b52',
         },
         accent: {
-          DEFAULT: '#27272a',
-          foreground: '#fafafa',
+          DEFAULT: '#e6f4ea',
+          foreground: '#0b3b2a',
         },
-        border: '#27272a',
-        ring: '#3f3f46',
-        surface: '#121316',
-        'surface-elevated': '#18191e',
+        border: '#dbe7e1',
+        ring: '#0b3b2a',
+        surface: '#ffffff',
+        'surface-elevated': '#fbfdfc',
+        emerald: {
+          deep: '#0b3b2a',
+          pine: '#14573f',
+          moss: '#082d22',
+          light: '#f0fdf4',
+          mint: '#86efac',
+        },
         aqi: {
           good: '#16a34a',
           satisfactory: '#65a30d',
@@ -49,6 +57,8 @@ export default {
         }
       },
       fontFamily: {
+        vaayu: ['"Danfo"', 'serif', 'system-ui'],
+        danfo: ['"Danfo"', 'serif', 'system-ui'],
         heading: ['"Righteous"', 'system-ui', 'sans-serif'],
         title: ['"Righteous"', 'system-ui', 'sans-serif'],
         sans: ['"Lato"', 'system-ui', 'sans-serif'],

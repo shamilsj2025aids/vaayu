@@ -4,20 +4,44 @@
 
 @layer base {
   :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-    --card: #121316;
-    --card-foreground: #fafafa;
-    --popover: #121316;
-    --popover-foreground: #fafafa;
-    --border: #27272a;
-    --ring: #3f3f46;
+    --background: #061d15;
+    --foreground: #ffffff;
+    --card: #0a2e21;
+    --card-foreground: #ffffff;
+    --popover: #0a2e21;
+    --popover-foreground: #ffffff;
+    --primary: #10b981;
+    --primary-foreground: #061d15;
+    --secondary: #0e3d2c;
+    --secondary-foreground: #ffffff;
+    --muted: #072118;
+    --muted-foreground: #a7d0bf;
+    --accent: #124735;
+    --accent-foreground: #ffffff;
+    --border: #134e38;
+    --ring: #34d399;
+  }
+
+  html {
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: 'Lato', system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  /* Danfo font exclusively for 'VAAYU' */
+  .font-vaayu, .font-danfo, .danfo-regular {
+    font-family: "Danfo", serif, system-ui;
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: 0.04em;
   }
 
   h1, h2, h3, .font-heading, .font-title, .righteous-regular {
@@ -27,11 +51,11 @@
     letter-spacing: 0.02em;
   }
 
-.righteous-regular {
-  font-family: "Righteous", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
+  .righteous-regular {
+    font-family: "Righteous", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
 
   h4, h5, h6, .font-subheading {
     font-family: 'Lato', system-ui, sans-serif;
@@ -61,38 +85,38 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars */
+/* Custom scrollbars in clean white and forest green */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: #061d15;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 2px;
+  background: #14533c;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #10b981;
 }
 
-/* Leaflet map clean dark styling */
+/* Leaflet map green and white theme styling */
 .leaflet-container {
-  background-color: #0d0e12 !important;
+  background-color: #061d15 !important;
   font-family: 'Lato', sans-serif !important;
 }
 
 .leaflet-tile-pane {
-  filter: brightness(0.65) invert(1) contrast(3.0) hue-rotate(200deg) saturate(0.2);
+  filter: contrast(1.05) saturate(0.95);
 }
 
 .leaflet-popup-content-wrapper {
-  background: #14151a !important;
-  color: #fafafa !important;
-  border: 1px solid #27272a !important;
-  border-radius: 0.5rem !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8) !important;
+  background: #0a2e21 !important;
+  color: #ffffff !important;
+  border: 1px solid #134e38 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important;
   padding: 0 !important;
 }
 
@@ -102,6 +126,6 @@
 }
 
 .leaflet-popup-tip {
-  background: #14151a !important;
-  border: 1px solid #27272a !important;
+  background: #0a2e21 !important;
+  border: 1px solid #134e38 !important;
 }

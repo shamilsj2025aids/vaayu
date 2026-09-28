@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Wind, Shield, User, ArrowRight, Zap, AlertCircle } from 'lucide-react';
+import Demo from '@/components/ui/demo';
 
 export interface AuthUser {
   role: 'civilian' | 'authority';
@@ -14,6 +16,7 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [activeTab, setActiveTab] = useState<'authority' | 'civilian'>('authority');
+  const [showPortalPreview, setShowPortalPreview] = useState(false);
 
   // Civilian Form State
   const [civilianContact, setCivilianContact] = useState('');
@@ -21,7 +24,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [civilianError, setCivilianError] = useState('');
 
   // Authority Form State
-  const [vaayuId, setVaayuId] = useState('');
+  const [aerisId, setAerisId] = useState('');
   const [pin, setPin] = useState('');
   const [authorityError, setAuthorityError] = useState('');
 
@@ -45,7 +48,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   const handleAuthoritySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vaayuId.trim()) {
+    if (!aerisId.trim()) {
       setAuthorityError('Please enter your official VAAYU Officer ID');
       return;
     }
@@ -55,7 +58,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
     onLogin({
       role: 'authority',
-      identifier: vaayuId.toUpperCase(),
+      identifier: aerisId.toUpperCase(),
       name: 'Dr. V. Sharma (Nodal Officer)',
       organization: 'CAQM / CPCB Decision Support Desk',
       badge: 'Level-3 GRAP Enforcement Clearance',
@@ -81,50 +84,84 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     });
   };
 
-  return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col justify-between p-4 sm:p-6 font-sans">
-      {/* Top Govt / Institutional Header */}
-      <div className="max-w-5xl mx-auto w-full flex items-center justify-between border-b border-[#27272a] pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#18181b] border border-[#27272a] flex items-center justify-center font-bold text-sm tracking-wider text-sky-400">
-            <span className="material-symbols-outlined text-xl">air</span>
+  if (showPortalPreview) {
+    return (
+      <div className="min-h-screen bg-[#061d15] flex flex-col font-sans text-white">
+        <div className="bg-[#072118] text-white px-6 py-3 flex items-center justify-between border-b border-[#134e38] z-50">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2"><span className="font-vaayu text-2xl tracking-wider text-white">VAAYU</span><span className="font-heading text-base font-bold text-white">Portal Preview</span></span>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowPortalPreview(false)}
+            className="px-3.5 py-1.5 bg-white hover:bg-emerald-100 text-[#072118] font-bold text-xs rounded-lg transition shadow-sm"
+          >
+            Back to Sign In
+          </button>
+        </div>
+        <div className="flex-1">
+          <Demo
+            word="VAAYU"
+            onEnterDashboard={() => {
+              demoAuthorityLogin();
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#061d15] text-white flex flex-col justify-between p-4 sm:p-6 font-sans">
+      {/* Top Govt / Institutional Header */}
+      <div className="max-w-5xl mx-auto w-full flex items-center justify-between border-b border-[#134e38] pb-4">
+        <div className="flex items-center gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-heading text-xl tracking-wide text-white">VAAYU</span>
+              <span className="font-vaayu text-3xl tracking-wider text-white">VAAYU</span>
+              <span className="text-[10px] bg-[#0e3d2c] text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-600/50">
+                v2.0
+              </span>
             </div>
-            <p className="text-xs text-neutral-400">
-              Commission for Air Quality Management
+            <p className="text-xs text-[#a7d0bf] font-medium">
+              Commission for Air Quality Management • Delhi-NCR
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-neutral-400">
-          <span>Official Portal</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPortalPreview(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0a2e21] hover:bg-[#0e3d2c] text-white border border-emerald-600/40 text-xs font-bold rounded-lg transition-all"
+          >
+            <span>Glyph Portal Intro</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Main Authentication Card */}
-      <div className="max-w-md mx-auto w-full my-8 bg-[#121316] border border-[#27272a] rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div className="max-w-md mx-auto w-full my-8 bg-[#0a2e21] border-2 border-emerald-600/40 rounded-2xl p-6 sm:p-8 shadow-2xl text-white">
         <div className="text-center mb-6">
-          <h1 className="font-heading text-2xl text-white">Access VAAYU Portal</h1>
-          <p className="text-xs text-neutral-400 mt-1">
-            Air Quality Intelligence Network
+          <h1 className="font-heading text-2xl font-bold text-white flex items-center justify-center gap-2"><span>Access</span><span className="font-vaayu text-3xl font-normal tracking-wider text-white">VAAYU</span><span>Portal</span></h1>
+          <p className="text-xs text-[#a7d0bf] mt-1 font-sans">
+            Air Quality Early Warning System
           </p>
         </div>
 
         {/* Portal Role Selector Tabs */}
-        <div className="grid grid-cols-2 gap-1 bg-[#18181b] p-1 rounded-xl border border-[#27272a] text-xs font-medium mb-6">
+        <div className="grid grid-cols-2 gap-1 bg-[#061d15] p-1 rounded-xl border border-emerald-800/60 text-xs font-medium mb-6">
           <button
             type="button"
             onClick={() => setActiveTab('authority')}
             className={`py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'authority'
-                ? 'bg-[#27272a] text-white shadow-sm font-semibold'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-white text-[#072118] shadow-md font-bold'
+                : 'text-emerald-100/80 hover:text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-sm">shield</span>
+            <Shield className="w-4 h-4" />
             <span>Authority (CPCB/CAQM)</span>
           </button>
 
@@ -133,11 +170,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             onClick={() => setActiveTab('civilian')}
             className={`py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'civilian'
-                ? 'bg-[#27272a] text-white shadow-sm font-semibold'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-white text-[#072118] shadow-md font-bold'
+                : 'text-emerald-100/80 hover:text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-sm">person</span>
+            <User className="w-4 h-4" />
             <span>Civilian / Public</span>
           </button>
         </div>
@@ -145,41 +182,39 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {/* AUTHORITY LOGIN FORM */}
         {activeTab === 'authority' && (
           <form onSubmit={handleAuthoritySubmit} className="space-y-4">
-            <div className="p-3 bg-[#18181b] border border-[#27272a] rounded-xl text-xs text-neutral-300 flex items-start gap-2.5">
-              <span className="material-symbols-outlined text-sky-400 text-base shrink-0 mt-0.5">verified_user</span>
+            <div className="p-3 bg-[#061d15] border border-emerald-700/50 rounded-xl text-xs text-emerald-100 flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <strong className="text-white block font-medium">Restricted Administrative Access</strong>
+                <strong className="text-white block font-bold">Restricted Administrative Access</strong>
                 <span>Requires official VAAYU Officer Identification and 6-digit cryptographic security PIN.</span>
               </div>
             </div>
 
             {authorityError && (
-              <div className="p-2.5 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-lg flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">error</span>
+              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
                 <span>{authorityError}</span>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-neutral-300 block">
+              <label className="text-xs font-bold text-white block">
                 Official VAAYU Officer ID
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="e.g. VAAYU-CAQM-26082"
-                  value={vaayuId}
-                  onChange={(e) => {
-                    setVaayuId(e.target.value);
-                    setAuthorityError('');
-                  }}
-                  className="w-full bg-[#18181b] border border-[#27272a] focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 font-mono focus:outline-none"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="e.g. VAAYU-CAQM-26082"
+                value={aerisId}
+                onChange={(e) => {
+                  setAerisId(e.target.value);
+                  setAuthorityError('');
+                }}
+                className="w-full bg-[#061d15] border border-emerald-700/60 focus:border-white focus:ring-1 focus:ring-white rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-emerald-500/70 font-mono focus:outline-none transition"
+              />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-neutral-300 block">
+              <label className="text-xs font-bold text-white block">
                 6-Digit Security Password / PIN
               </label>
               <input
@@ -191,28 +226,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   setPin(e.target.value.replace(/\D/g, ''));
                   setAuthorityError('');
                 }}
-                className="w-full bg-[#18181b] border border-[#27272a] focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-neutral-500 font-mono tracking-widest text-center focus:outline-none"
+                className="w-full bg-[#061d15] border border-emerald-700/60 focus:border-white focus:ring-1 focus:ring-white rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-emerald-500/70 font-mono tracking-widest text-center focus:outline-none transition"
               />
-              <span className="text-[11px] text-neutral-500 block">
+              <span className="text-[11px] text-[#a7d0bf] block">
                 Issued by CAQM Telemetry Infrastructure Command
               </span>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold tracking-wide transition-all shadow-md mt-2 flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-white hover:bg-emerald-100 text-[#072118] font-bold rounded-xl text-xs tracking-wide transition-all shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Authenticate & Enter Decision Dashboard</span>
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
 
-            <div className="pt-2 border-t border-[#27272a]">
+            <div className="pt-2 border-t border-emerald-800/60">
               <button
                 type="button"
                 onClick={demoAuthorityLogin}
-                className="w-full py-2 px-3 bg-[#18181b] hover:bg-[#202127] border border-[#27272a] text-sky-400 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2 px-3 bg-[#061d15] hover:bg-[#0e3d2c] border border-emerald-700/50 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm">bolt</span>
+                <Zap className="w-3.5 h-3.5 text-[#16a34a]" />
                 <span>Demo 1-Click: Sign in as CAQM Taskforce Chief</span>
               </button>
             </div>
@@ -222,23 +257,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {/* CIVILIAN LOGIN FORM */}
         {activeTab === 'civilian' && (
           <form onSubmit={handleCivilianSubmit} className="space-y-4">
-            <div className="p-3 bg-[#18181b] border border-[#27272a] rounded-xl text-xs text-neutral-300 flex items-start gap-2.5">
-              <span className="material-symbols-outlined text-emerald-400 text-base shrink-0 mt-0.5">public</span>
+            <div className="p-3 bg-[#061d15] border border-emerald-700/50 rounded-xl text-xs text-emerald-100 flex items-start gap-2.5">
+              <User className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <strong className="text-white block font-medium">Public Citizen Air Advisory</strong>
+                <strong className="text-white block font-bold">Public Citizen Air Advisory</strong>
                 <span>Check localized air quality, 3-day health forecasts, mask mandates, and set personal threshold alerts.</span>
               </div>
             </div>
 
             {civilianError && (
-              <div className="p-2.5 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs rounded-lg flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">error</span>
+              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
                 <span>{civilianError}</span>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-neutral-300 block">
+              <label className="text-xs font-bold text-white block">
                 Mobile Number or Email
               </label>
               <input
@@ -249,12 +284,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   setCivilianContact(e.target.value);
                   setCivilianError('');
                 }}
-                className="w-full bg-[#18181b] border border-[#27272a] focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none"
+                className="w-full bg-[#061d15] border border-emerald-700/60 focus:border-white focus:ring-1 focus:ring-white rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-emerald-500/70 focus:outline-none transition"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-neutral-300 block">
+              <label className="text-xs font-bold text-white block">
                 Password
               </label>
               <input
@@ -265,25 +300,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   setCivilianPassword(e.target.value);
                   setCivilianError('');
                 }}
-                className="w-full bg-[#18181b] border border-[#27272a] focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none"
+                className="w-full bg-[#061d15] border border-emerald-700/60 focus:border-white focus:ring-1 focus:ring-white rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-emerald-500/70 focus:outline-none transition"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold tracking-wide transition-all shadow-md mt-2 flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-white hover:bg-emerald-100 text-[#072118] font-bold rounded-xl text-xs tracking-wide transition-all shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Sign In to Citizen Portal</span>
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
 
-            <div className="pt-2 border-t border-[#27272a]">
+            <div className="pt-2 border-t border-emerald-800/60">
               <button
                 type="button"
                 onClick={demoCivilianLogin}
-                className="w-full py-2 px-3 bg-[#18181b] hover:bg-[#202127] border border-[#27272a] text-emerald-400 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2 px-3 bg-[#061d15] hover:bg-[#0e3d2c] border border-emerald-700/50 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm">bolt</span>
+                <Zap className="w-3.5 h-3.5 text-[#16a34a]" />
                 <span>Demo 1-Click: Quick Continue as Public Citizen</span>
               </button>
             </div>
@@ -292,9 +327,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       </div>
 
       {/* Footer */}
-      <div className="max-w-5xl mx-auto w-full text-center text-xs text-neutral-500 border-t border-[#27272a] pt-4">
-        VAAYU Air Quality Decision Support System • Ministry of Environment, Forest and Climate Change • SIH26082
+      <div className="max-w-5xl mx-auto w-full text-center text-xs text-[#a7d0bf] border-t border-[#134e38] pt-4">
+        VAAYU Air Quality Decision Support System • Ministry of Environment, Forest and Climate Change • White & Green Edition
       </div>
     </div>
   );
 };
+export default LoginPage;

@@ -32,11 +32,13 @@ import { ModelComparisonView } from './components/ModelComparisonView';
 import { TrackRecordView } from './components/TrackRecordView';
 import { SystemStatusPanel } from './components/SystemStatusPanel';
 import { PublicView } from './components/PublicView';
+import Demo from '@/components/ui/demo';
+import { Wind, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Authentication State
   const [user, setUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('vaayu_auth_user');
+    const saved = localStorage.getItem('aeris_auth_user') || localStorage.getItem('vaayu_auth_user');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -125,11 +127,12 @@ export const App: React.FC = () => {
 
   const handleLogin = (newUser: AuthUser) => {
     setUser(newUser);
-    localStorage.setItem('vaayu_auth_user', JSON.stringify(newUser));
+    localStorage.setItem('aeris_auth_user', JSON.stringify(newUser));
   };
 
   const handleLogout = () => {
     setUser(null);
+    localStorage.removeItem('aeris_auth_user');
     localStorage.removeItem('vaayu_auth_user');
   };
 
@@ -157,8 +160,8 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col lg:flex-row font-sans">
-      {/* Sleek Vertical Sidebar (Replacing Top Navbar completely) */}
+    <div className="min-h-screen bg-[#f8faf9] text-[#0c1212] flex flex-col lg:flex-row font-sans">
+      {/* Sleek Vertical Sidebar in White & Green */}
       <Sidebar
         user={user}
         onLogout={handleLogout}
@@ -172,10 +175,10 @@ export const App: React.FC = () => {
         onSelectAlert={(a) => setActiveAlertForWhy(a)}
       />
 
-      {/* Main Workspace Area (Offset by sidebar width on large screens) */}
+      {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-72 min-h-screen">
         {/* Proactive Alert Banner (Visible only in Authority Mode) */}
-        {user.role === 'authority' && alerts.length > 0 && (
+        {user.role === 'authority' && alerts.length > 0 && activeTab !== 'portal' && (
           <AlertBanner
             alerts={alerts}
             onSelectAlert={(a) => setActiveAlertForWhy(a)}
@@ -185,18 +188,52 @@ export const App: React.FC = () => {
         {/* Dynamic Operational Content */}
         <main className="flex-1 p-3 sm:p-5 max-w-[1600px] w-full mx-auto flex flex-col">
           {isLoadingInitial ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-24 space-y-4">
-              <div className="w-8 h-8 border-2 border-neutral-700 border-t-sky-500 rounded-full animate-spin"></div>
-              <p className="text-xs font-bold text-neutral-400 font-sans">
-                Loading VAAYU Intelligence Network...
-              </p>
+            <div className="flex-1 min-h-[500px] bg-[#0a2e21] rounded-2xl border-2 border-emerald-600/40 p-6 shadow-xl flex flex-col items-center justify-center space-y-4 text-white">
+              <div className="w-12 h-12 rounded-full border-4 border-emerald-800 border-t-white animate-spin" />
+              <div className="text-center space-y-1">
+                <p className="text-sm font-bold text-white font-sans">
+                  Synchronizing VAAYU Atmosphere Network...
+                </p>
+                <p className="text-xs text-[#a7d0bf]">
+                  Coupling 56 ground CAAQMS stations with NASA FIRMS active fire telemetry
+                </p>
+              </div>
             </div>
           ) : user.role === 'civilian' ? (
             /* Simplified Public Citizen Experience */
-            <PublicView forecasts={forecasts} />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between bg-[#0a2e21] px-4 py-2.5 rounded-xl border border-emerald-600/40 shadow-sm text-white">
+                <div className="flex items-center gap-2 text-xs text-white font-bold">
+                  <span className="flex items-center gap-2"><span className="font-vaayu text-xl tracking-wider text-white">VAAYU</span><span className="font-heading text-xs font-bold text-emerald-200">Live Citizen Portal</span></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(activeTab === 'portal' ? 'home' : 'portal')}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-emerald-100 text-[#072118] text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#16a34a]" />
+                  <span>{activeTab === 'portal' ? 'Return to Citizen Advisory' : 'Explore VAAYU Glyph Portal'}</span>
+                </button>
+              </div>
+
+              {activeTab === 'portal' ? (
+                <div className="bg-[#0a2e21] rounded-2xl border-2 border-emerald-600/40 shadow-md overflow-hidden">
+                  <Demo word="VAAYU" onEnterDashboard={() => setActiveTab('home')} />
+                </div>
+              ) : (
+                <PublicView forecasts={forecasts} />
+              )}
+            </div>
           ) : (
             /* Authority / Decision-Maker Experience */
             <div className="flex-1 flex flex-col">
+              {/* 0. INTERACTIVE GLYPH PORTAL TAB */}
+              {activeTab === 'portal' && (
+                <div className="flex-1 bg-[#0a2e21] rounded-2xl border-2 border-emerald-600/40 shadow-md overflow-hidden min-h-[750px]">
+                  <Demo word="VAAYU" onEnterDashboard={() => setActiveTab('home')} />
+                </div>
+              )}
+
               {/* 1. CENTRAL HOME TAB (Draggable Widget Organizer) */}
               {activeTab === 'home' && (
                 <HomeWidgetDashboard

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert } from '../types';
+import { AgentAvatar } from '@/components/ui/agent-avatar';
 
 interface AlertBannerProps {
   alerts: Alert[];
@@ -21,66 +22,63 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ alerts, onSelectAlert 
   return (
     <div className="w-full px-3 sm:px-5 pt-4 pb-0 max-w-[1600px] mx-auto font-sans">
       {/* One unified box with 4 distinct partitions */}
-      <div className="bg-[#121316] border border-[#27272a] rounded-2xl p-2 sm:p-3 shadow-xl flex flex-col md:flex-row items-stretch">
-        {/* Partition 1: Roman Numeral Stage (BIG with "STAGE" on top) */}
-        <div className="md:w-32 shrink-0 flex flex-col items-center justify-center py-2 px-3 text-center">
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+      <div className="bg-[#0a2e21] border-2 border-emerald-600/40 rounded-2xl p-2 sm:p-3 shadow-lg text-white flex flex-col md:flex-row items-stretch">
+        {/* Partition 1: Roman Numeral Stage */}
+        <div className="md:w-36 shrink-0 flex flex-col items-center justify-center py-2.5 px-3 text-center bg-rose-950/50 rounded-xl md:rounded-r-none border border-rose-800/60">
+          <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">
             STAGE
           </span>
-          <span className="font-numbers text-3xl sm:text-4xl text-rose-300 font-extrabold leading-none my-1 tracking-tight">
+          <span className="font-numbers text-4xl sm:text-5xl text-rose-400 font-black leading-none my-1 tracking-tight">
             {roman}
           </span>
-          <span className="text-[10px] font-bold text-rose-400/90 uppercase tracking-wider">
+          <span className="text-xs font-bold text-rose-300 uppercase tracking-wider">
             {stageSub}
           </span>
         </div>
 
-        {/* Partition 2: The Event and Event Alone */}
-        <div className="flex-1 min-w-0 px-3 sm:px-4 py-2 flex flex-col justify-center border-t md:border-t-0 md:border-l border-[#27272a]">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+        {/* Partition 2: The Event */}
+        <div className="flex-1 min-w-0 px-3 sm:px-4 py-2 flex flex-col justify-center border-t md:border-t-0 md:border-l border-emerald-800/60">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#a7d0bf]">
             Event
           </span>
-          <h3 className="text-sm sm:text-base font-bold text-white mt-1 leading-snug">
+          <h3 className="text-base sm:text-lg font-bold text-white mt-1 leading-snug">
             {primaryAlert.title}
           </h3>
         </div>
 
         {/* Partition 3: Expected Onset and Projected Impact */}
-        <div className="flex-[1.5] min-w-0 px-3 sm:px-4 py-2 flex flex-col justify-center border-t md:border-t-0 md:border-l border-[#27272a]">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+        <div className="flex-[1.5] min-w-0 px-3 sm:px-4 py-2 flex flex-col justify-center border-t md:border-t-0 md:border-l border-emerald-800/60">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#a7d0bf]">
               Expected Onset:
             </span>
-            <span className="font-numbers text-xs text-amber-300 font-bold">
+            <span className="font-numbers text-xs sm:text-sm text-amber-300 font-black bg-amber-950/70 px-2.5 py-0.5 rounded-lg border border-amber-600/50">
               {primaryAlert.start_time}
             </span>
           </div>
-          <p className="text-xs text-neutral-300 mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#d1fae5]/90 mt-1.5 line-clamp-2 leading-relaxed">
             {primaryAlert.subtitle}
           </p>
         </div>
 
-        {/* Partition 4: AI Gradient Circle Agent (Click to open causal diagnostics & chatbot) */}
-        <div className="md:w-28 shrink-0 flex flex-col items-center justify-center p-2 border-t md:border-t-0 md:border-l border-[#27272a]">
+        {/* Partition 4: AI Researcher Agent */}
+        <div className="md:w-32 shrink-0 flex flex-col items-center justify-center p-2 border-t md:border-t-0 md:border-l border-emerald-800/60">
           <button
             type="button"
             onClick={() => onSelectAlert(primaryAlert)}
-            className="group relative flex flex-col items-center justify-center p-1"
-            title="Open VAAYU AI Causal Agent & Investigation Chatbot"
+            className="group relative flex flex-col items-center justify-center p-1 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+            title="Open VAAYU AI Researcher & Investigation Chatbot"
           >
-            {/* Glowing animated atmospheric aura */}
-            <span className="absolute w-12 h-12 rounded-full bg-gradient-to-tr from-sky-500 via-purple-500 to-rose-500 opacity-60 blur-md group-hover:opacity-100 group-hover:scale-110 transition-all animate-pulse" />
+            {/* The Pixelated Researcher Avatar */}
+            <AgentAvatar name="researcher" size={44} pulse showBadge />
 
-            {/* The single gradient circle */}
-            <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-sky-400 via-indigo-500 to-rose-400 p-[2px] shadow-lg group-hover:scale-105 active:scale-95 transition-all">
-              <div className="w-full h-full rounded-full bg-[#121316]/50 backdrop-blur-xs flex items-center justify-center">
-                {/* Inner white glow core */}
-                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-white/95 to-sky-200/60 shadow-inner group-hover:scale-125 transition-transform" />
-              </div>
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className="text-xs font-bold text-white group-hover:text-[#86efac] uppercase tracking-wider transition-colors">
+                Ask AI
+              </span>
             </div>
-
-            <span className="text-[9px] font-bold text-sky-400 group-hover:text-white uppercase tracking-wider transition-colors mt-1.5">
-              Ask AI
+            <span className="text-[10px] text-[#a7d0bf] font-medium">
+              researcher
             </span>
           </button>
         </div>
@@ -88,3 +86,4 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ alerts, onSelectAlert 
     </div>
   );
 };
+export default AlertBanner;

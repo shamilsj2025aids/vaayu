@@ -14,7 +14,7 @@ import math
 app = FastAPI(
     title="VAAYU API",
     description="Air Quality Intelligence Network",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 app.add_middleware(
